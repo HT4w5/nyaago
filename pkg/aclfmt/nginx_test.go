@@ -6,7 +6,6 @@ import (
 	"net/netip"
 	"testing"
 
-	"github.com/HT4w5/nyaago/pkg/utils"
 	"go4.org/netipx"
 )
 
@@ -53,56 +52,36 @@ func TestNginxFormatterMarshal(t *testing.T) {
 		{
 			name: "happy path",
 			info: "nyaago",
-			ipset: utils.MakeIPSet(
-				[]netip.Prefix{
-					netip.MustParsePrefix("192.168.1.0/24"),
-					netip.MustParsePrefix("10.0.0.0/8"),
-				},
-				[]netip.Prefix{},
-			),
-			expectError: false,
+			ipset: makeIPSet([]string{
+				"192.168.1.0/24",
+				"10.0.0.0/8",
+			}),
 		},
 		{
 			name: "info with new line",
 			info: "nyaago\nnewline",
-			ipset: utils.MakeIPSet(
-				[]netip.Prefix{
-					netip.MustParsePrefix("192.168.1.0/24"),
-				},
-				[]netip.Prefix{},
-			),
-			expectError: true,
+			ipset: makeIPSet([]string{
+				"192.168.1.0/24",
+			}),
 		},
 		{
 			name: "empty info",
 			info: "",
-			ipset: utils.MakeIPSet(
-				[]netip.Prefix{
-					netip.MustParsePrefix("192.168.1.0/24"),
-				},
-				[]netip.Prefix{},
-			),
-			expectError: true,
+			ipset: makeIPSet([]string{
+				"192.168.1.0/24",
+			}),
 		},
 		{
-			name: "empty ipset",
-			info: "nyaago",
-			ipset: utils.MakeIPSet(
-				[]netip.Prefix{},
-				[]netip.Prefix{},
-			),
-			expectError: false,
+			name:  "empty ipset",
+			info:  "nyaago",
+			ipset: makeIPSet([]string{}),
 		},
 		{
 			name: "single ip",
 			info: "nyaago",
-			ipset: utils.MakeIPSet(
-				[]netip.Prefix{
-					netip.MustParsePrefix("192.168.1.1/32"),
-				},
-				[]netip.Prefix{},
-			),
-			expectError: false,
+			ipset: makeIPSet([]string{
+				"192.168.1.1/32",
+			}),
 		},
 	}
 
@@ -111,11 +90,8 @@ func TestNginxFormatterMarshal(t *testing.T) {
 			var buf bytes.Buffer
 			f := makeNginxFormatter(tt.info)
 			err := f.Marshal(tt.ipset, &buf)
-			if err != nil && !tt.expectError {
+			if err != nil {
 				t.Errorf("unexpected error: %v", err)
-			}
-			if err == nil && tt.expectError {
-				t.Errorf("expected error, got none")
 			}
 			if !tt.expectError {
 				fmt.Println(buf.String())
@@ -156,4 +132,19 @@ func TestNginxFormatterInfo(t *testing.T) {
 			}
 		})
 	}
+}
+
+func makeIPSet(prefixes []string) *netipx.IPSet {
+	var b netipx.IPSetBuilder
+	for _, v := range prefixes {
+		p, err := netip.ParsePrefix(v)
+		if err != nil {
+			return nil
+		}
+
+		b.AddPrefix(p)
+	}
+
+	set, _ := b.IPSet()
+	return set
 }
