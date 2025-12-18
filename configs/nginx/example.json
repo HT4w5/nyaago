@@ -1,0 +1,10 @@
+{
+    "timestamp": 1765912302.327,
+    "remote_addr": "172.20.0.1",
+    "request_method": "GET",
+    "request_uri": "/",
+    "status": "304",
+    "request_time": 0.000,
+    "body_bytes_sent": 0,
+    "http_x_forwarded_for": ""
+}
