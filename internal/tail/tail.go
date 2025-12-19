@@ -3,6 +3,7 @@ package tail
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 
 	"github.com/HT4w5/nyaago/internal/config"
@@ -51,6 +52,10 @@ func MakeTail(cfg *config.TailConfig, logger *slog.Logger) (*Tail, error) {
 		MustExist: false,
 		Poll:      cfg.Poll,
 		Logger:    slog.NewLogLogger(t.logger.Handler(), slog.LevelInfo),
+		Location: &tail.SeekInfo{
+			Offset: 0,
+			Whence: io.SeekEnd,
+		},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tail: %w", err)
