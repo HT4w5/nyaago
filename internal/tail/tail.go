@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	LoggerModuleName = "tail"
-	LoggerGroupName  = "tail"
+	loggerModuleName = "tail"
+	loggerGroupName  = "tail"
 )
 
 type Tail struct {
@@ -54,7 +54,7 @@ func MakeTail(cfg *config.TailConfig, logger *slog.Logger) (*Tail, error) {
 	}
 
 	// Setup logger
-	t.logger = logger.With(logging.LoggerKeyModule, LoggerModuleName).WithGroup(LoggerGroupName)
+	t.logger = logger.With(logging.LoggerKeyModule, loggerModuleName).WithGroup(loggerGroupName)
 
 	return t, nil
 }

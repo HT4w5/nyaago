@@ -11,6 +11,7 @@ import (
 
 const (
 	LoggerKeyModule = "module"
+	LoggerKeyError  = "error"
 )
 
 func SetupLogger(cfg *config.LogConfig) (*slog.Logger, error) {
