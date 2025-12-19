@@ -98,12 +98,12 @@ func GetServer(cfg *config.Config) (*Server, error) {
 	return s, nil
 }
 
-func (s *Server) Start(ctx context.Context) {
+func (s *Server) Start(ctx context.Context, cancel context.CancelFunc) {
 	// Cron
 	s.cron.Start()
 
 	// Ingress worker
-	go s.runIngressWorker(ctx)
+	go s.runIngressWorker(ctx, cancel)
 
 	// HTTP server
 	go func() {

@@ -42,7 +42,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
 	// Start server
-	srv.Start(ctx)
+	srv.Start(ctx, stop)
 
 	<-ctx.Done()
 	stop()

@@ -7,11 +7,11 @@ import (
 	"github.com/HT4w5/nyaago/pkg/dto"
 )
 
-func (s *Server) runIngressWorker(ctx context.Context) {
+func (s *Server) runIngressWorker(ctx context.Context, cancel context.CancelFunc) {
 	requestChan := make(chan dto.Request)
 
 	// Start tail worker
-	go s.tail.Start(ctx, requestChan)
+	go s.tail.Start(ctx, requestChan, cancel)
 
 	// Worker loop
 	for {

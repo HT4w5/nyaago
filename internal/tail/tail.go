@@ -59,13 +59,20 @@ func MakeTail(cfg *config.TailConfig, logger *slog.Logger) (*Tail, error) {
 	return t, nil
 }
 
-func (t *Tail) Start(ctx context.Context, out chan<- dto.Request) {
+func (t *Tail) Start(ctx context.Context, out chan<- dto.Request, cancel context.CancelFunc) {
 	for {
 		select {
 		case <-ctx.Done():
 			t.tail.Stop()
 			return
 		case line := <-t.tail.Lines:
+			if line == nil {
+				// Tail failed, cancel global context
+				err := t.tail.Wait()
+				t.logger.Error("tail failed", logging.LoggerKeyError, err)
+				cancel()
+				return
+			}
 			req, err := t.parser.Parse([]byte(line.Text))
 			if err != nil {
 				t.logger.Error("failed to parse line", "log_type", t.cfg.Type, "log_path", t.cfg.Path, "log_line", line)
