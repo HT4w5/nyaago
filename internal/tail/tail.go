@@ -40,6 +40,9 @@ func MakeTail(cfg *config.TailConfig, logger *slog.Logger) (*Tail, error) {
 		return nil, fmt.Errorf("unsupported log type: %s", cfg.Type)
 	}
 
+	// Setup logger
+	t.logger = logger.With(logging.LoggerKeyModule, loggerModuleName).WithGroup(loggerGroupName)
+
 	// Setup tail
 	var err error
 	t.tail, err = tail.TailFile(cfg.Path, tailutil.Config{
@@ -52,9 +55,6 @@ func MakeTail(cfg *config.TailConfig, logger *slog.Logger) (*Tail, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tail: %w", err)
 	}
-
-	// Setup logger
-	t.logger = logger.With(logging.LoggerKeyModule, loggerModuleName).WithGroup(loggerGroupName)
 
 	return t, nil
 }
