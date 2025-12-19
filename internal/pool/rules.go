@@ -80,7 +80,7 @@ func (p *Pool) BuildRules() error {
 		if v.Addr.Is4() {
 			prefixLength = p.cfg.Pool.BanPrefixLength.IPv4
 		} else if v.Addr.Is6() {
-			prefixLength = p.cfg.Pool.BanPrefixLength.Ipv6
+			prefixLength = p.cfg.Pool.BanPrefixLength.IPv6
 		} else {
 			// Drop invalid
 			continue

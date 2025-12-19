@@ -36,7 +36,7 @@ type PoolConfig struct {
 	SendRatioThreshold float64           `json:"send_ratio_threshold"`
 	BanPrefixLength    struct {
 		IPv4 int `json:"ipv4"`
-		Ipv6 int `json:"ipv6"`
+		IPv6 int `json:"ipv6"`
 	} `json:"ban_prefix_length"`
 }
 
@@ -93,6 +93,10 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
+	err = cfg.verify()
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify config: %w", err)
+	}
 	return &cfg, nil
 }
 
@@ -100,10 +104,20 @@ func getDefault() Config {
 	var cfg Config
 
 	cfg.Pool.BanPrefixLength.IPv4 = 24
-	cfg.Pool.BanPrefixLength.IPv4 = 64
+	cfg.Pool.BanPrefixLength.IPv6 = 64
 
 	cfg.API.Addr = "0.0.0.0"
 	cfg.API.Port = 80
 
 	return cfg
+}
+
+func (cfg Config) verify() error {
+	if cfg.Pool.BanPrefixLength.IPv4 < 0 || cfg.Pool.BanPrefixLength.IPv4 >= 32 {
+		return fmt.Errorf("invalid pool.ban_prefix_length.ipv4. Must be in [0, 32]")
+	}
+	if cfg.Pool.BanPrefixLength.IPv6 < 0 || cfg.Pool.BanPrefixLength.IPv6 >= 128 {
+		return fmt.Errorf("invalid pool.ban_prefix_length.ipv6. Must be in [0, 128]")
+	}
+	return nil
 }
