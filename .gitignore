@@ -1,3 +1,5 @@
 .vscode
 *.json
 !example.json
+*.db
+*.log
