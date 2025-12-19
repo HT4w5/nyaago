@@ -43,6 +43,7 @@ func GetPool(cfg *config.Config) (*Pool, error) {
 		return nil, fmt.Errorf("failed to make client whitelist: %w", err)
 	}
 
+	p.resourceWhitelist = make(map[string]struct{})
 	for _, v := range cfg.Pool.ResourceConfig.Whitelist {
 		p.resourceWhitelist[v] = struct{}{}
 	}
@@ -62,6 +63,7 @@ func GetPool(cfg *config.Config) (*Pool, error) {
 		b.AddPrefix(prefix)
 	}
 
+	p.requestWhitelist = make(map[string]*netipx.IPSet)
 	for k, v := range setBuilderMap {
 		p.requestWhitelist[k], err = v.IPSet()
 		if err != nil {
