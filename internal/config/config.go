@@ -86,11 +86,24 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("failed to read config: %w", err)
 	}
 
-	var cfg Config
+	cfg := getDefault()
+
 	err = json.Unmarshal(cfgBytes, &cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	return &cfg, nil
+}
+
+func getDefault() Config {
+	var cfg Config
+
+	cfg.Pool.BanPrefixLength.IPv4 = 24
+	cfg.Pool.BanPrefixLength.IPv4 = 64
+
+	cfg.API.Addr = "0.0.0.0"
+	cfg.API.Port = 80
+
+	return cfg
 }
