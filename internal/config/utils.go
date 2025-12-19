@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"time"
 )
 
@@ -31,4 +32,23 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	default:
 		return fmt.Errorf("invalid duration type: %T", v)
 	}
+}
+
+type RegexWrapper struct {
+	*regexp.Regexp
+}
+
+func (r *RegexWrapper) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	re, err := regexp.Compile(s)
+	if err != nil {
+		return err
+	}
+
+	r.Regexp = re
+	return nil
 }

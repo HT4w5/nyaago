@@ -9,75 +9,10 @@ import (
 type Config struct {
 	Log      LogConfig      `json:"log"`
 	DB       DBConfig       `json:"db"`
-	Pool     PoolConfig     `json:"pool"`
-	Cron     CronConfig     `json:"cron"`
-	Tail     TailConfig     `json:"tail"`
-	Fmt      FmtConfig      `json:"fmt"`
+	Analyzer AnalyzerConfig `json:"analyzer"`
+	Ingress  IngressConfig  `json:"ingress"`
+	Egress   EgressConfig   `json:"egress"`
 	API      APIConfig      `json:"api"`
-	PostExec PostExecConfig `json:"post_exec"`
-}
-
-type DBConfig struct {
-	Type   string `json:"type"`
-	Access string `json:"access"`
-}
-
-type LogConfig struct {
-	Access   string `json:"access"`
-	LogLevel string `json:"log_level"`
-	Json     bool   `json:"json"`
-}
-
-type PoolConfig struct {
-	ClientConfig       PoolObjectConfig  `json:"client"`
-	ResourceConfig     PoolObjectConfig  `json:"resource"`
-	RequestConfig      PoolRequestConfig `json:"request"`
-	RuleConfig         PoolObjectConfig  `json:"rule"`
-	SendRatioThreshold float64           `json:"send_ratio_threshold"`
-	BanPrefixLength    struct {
-		IPv4 int `json:"ipv4"`
-		IPv6 int `json:"ipv6"`
-	} `json:"ban_prefix_length"`
-}
-
-type CronConfig struct {
-	Interval Duration `json:"interval"`
-}
-
-type PoolObjectConfig struct {
-	TTL       Duration `json:"ttl"`
-	Whitelist []string `json:"whitelist"`
-}
-
-type PoolRequestConfig struct {
-	MaturationThreshold int      `json:"maturation"`
-	TTL                 Duration `json:"ttl"`
-	Whitelist           []struct {
-		Prefix string `json:"prefix"`
-		URL    string `json:"url"`
-	} `json:"whitelist"`
-}
-
-type TailConfig struct {
-	Path string `json:"path"`
-	Type string `json:"type"`
-	Poll bool   `json:"poll"`
-}
-
-type FmtConfig struct {
-	Path string `json:"path"`
-	Type string `json:"type"`
-}
-
-type APIConfig struct {
-	Addr string `json:"addr"`
-	Port int    `json:"port"`
-}
-
-type PostExecConfig struct {
-	Cmd  string   `json:"cmd"`
-	Cwd  string   `json:"cwd"`
-	Args []string `json:"args"`
 }
 
 func Load(path string) (*Config, error) {
@@ -103,8 +38,8 @@ func Load(path string) (*Config, error) {
 func getDefault() Config {
 	var cfg Config
 
-	cfg.Pool.BanPrefixLength.IPv4 = 24
-	cfg.Pool.BanPrefixLength.IPv6 = 64
+	cfg.Analyzer.BanPrefixLength.IPv4 = 24
+	cfg.Analyzer.BanPrefixLength.IPv6 = 64
 
 	cfg.API.Addr = "0.0.0.0"
 	cfg.API.Port = 80
@@ -113,11 +48,11 @@ func getDefault() Config {
 }
 
 func (cfg Config) verify() error {
-	if cfg.Pool.BanPrefixLength.IPv4 < 0 || cfg.Pool.BanPrefixLength.IPv4 >= 32 {
-		return fmt.Errorf("invalid pool.ban_prefix_length.ipv4. Must be in [0, 32]")
+	if cfg.Analyzer.BanPrefixLength.IPv4 < 0 || cfg.Analyzer.BanPrefixLength.IPv4 >= 32 {
+		return fmt.Errorf("invalid analyzer.ban_prefix_length.ipv4. Must be in range of [0, 32]")
 	}
-	if cfg.Pool.BanPrefixLength.IPv6 < 0 || cfg.Pool.BanPrefixLength.IPv6 >= 128 {
-		return fmt.Errorf("invalid pool.ban_prefix_length.ipv6. Must be in [0, 128]")
+	if cfg.Analyzer.BanPrefixLength.IPv6 < 0 || cfg.Analyzer.BanPrefixLength.IPv6 >= 128 {
+		return fmt.Errorf("invalid analyzer.ban_prefix_length.ipv6. Must be in range of [0, 128]")
 	}
 	return nil
 }
