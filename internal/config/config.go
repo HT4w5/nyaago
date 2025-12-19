@@ -1,11 +1,14 @@
 package config
 
 type Config struct {
-	Log  LogConfig  `json:"log"`
-	DB   DBConfig   `json:"db"`
-	Pool PoolConfig `json:"pool"`
-	Tail TailConfig `json:"tail"`
-	Fmt  FmtConfig  `json:"fmt"`
+	Log      LogConfig      `json:"log"`
+	DB       DBConfig       `json:"db"`
+	Pool     PoolConfig     `json:"pool"`
+	Cron     CronConfig     `json:"cron"`
+	Tail     TailConfig     `json:"tail"`
+	Fmt      FmtConfig      `json:"fmt"`
+	API      APIConfig      `json:"api"`
+	PostExec PostExecConfig `json:"post_exec"`
 }
 
 type DBConfig struct {
@@ -31,6 +34,10 @@ type PoolConfig struct {
 	} `json:"ban_prefix_length"`
 }
 
+type CronConfig struct {
+	Interval Duration `json:"interval"`
+}
+
 type PoolObjectConfig struct {
 	TTL       Duration `json:"ttl"`
 	Whitelist []string `json:"whitelist"`
@@ -54,6 +61,17 @@ type TailConfig struct {
 type FmtConfig struct {
 	Path string `json:"path"`
 	Type string `json:"type"`
+}
+
+type APIConfig struct {
+	Addr string `json:"addr"`
+	Port int    `json:"port"`
+}
+
+type PostExecConfig struct {
+	Cmd  string   `json:"cmd"`
+	Cwd  string   `json:"cwd"`
+	Args []string `json:"args"`
 }
 
 func Load(path string) *Config {

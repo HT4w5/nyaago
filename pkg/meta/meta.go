@@ -1,6 +1,9 @@
 package meta
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 const separator = "─"
 
@@ -66,4 +69,13 @@ func GetMetadataMultiline() string {
 	}
 
 	return sb.String()
+}
+
+func GetMetadataSingleLine() string {
+	return fmt.Sprintf(
+		"%s %s %s",
+		Name,
+		Version,
+		CommitHash,
+	)
 }
