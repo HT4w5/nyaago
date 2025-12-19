@@ -20,14 +20,14 @@ func (s *Server) runBuildRules(ctx context.Context) {
 	s.logger.Info("flushing expired pool objects")
 	err := s.pool.FlushExpired()
 	if err != nil {
-		s.logger.Error("failed to flush expired pool objects: %w", err)
+		s.logger.Error("failed to flush expired pool objects", logging.LoggerKeyError, err)
 	}
 
 	// Build rules
 	s.logger.Info("building new rules")
 	err = s.pool.BuildRules()
 	if err != nil {
-		s.logger.Error("failed to build new rules: %w", err)
+		s.logger.Error("failed to build new rules", logging.LoggerKeyError, err)
 	}
 }
 
