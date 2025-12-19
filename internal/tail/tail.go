@@ -73,6 +73,7 @@ func (t *Tail) Start(ctx context.Context, out chan<- dto.Request, cancel context
 				cancel()
 				return
 			}
+			t.logger.Debug("line received", "content", line.Text)
 			req, err := t.parser.Parse([]byte(line.Text))
 			if err != nil {
 				t.logger.Error("failed to parse line", "log_type", t.cfg.Type, "log_path", t.cfg.Path, "log_line", line)
