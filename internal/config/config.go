@@ -1,5 +1,11 @@
 package config
 
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+)
+
 type Config struct {
 	Log      LogConfig      `json:"log"`
 	DB       DBConfig       `json:"db"`
@@ -74,6 +80,17 @@ type PostExecConfig struct {
 	Args []string `json:"args"`
 }
 
-func Load(path string) *Config {
-	return nil
+func Load(path string) (*Config, error) {
+	cfgBytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config: %w", err)
+	}
+
+	var cfg Config
+	err = json.Unmarshal(cfgBytes, &cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", err)
+	}
+
+	return &cfg, nil
 }
