@@ -2,23 +2,18 @@ package pool
 
 import (
 	"fmt"
-	"net/netip"
 	"time"
 
 	"github.com/HT4w5/nyaago/internal/config"
 	"github.com/HT4w5/nyaago/pkg/db"
 	"github.com/HT4w5/nyaago/pkg/dto"
-	"go4.org/netipx"
 )
 
 var pool *Pool
 
 type Pool struct {
-	cfg               *config.Config
-	adapter           db.DBAdapter
-	clientWhitelist   *netipx.IPSet
-	resourceWhitelist map[string]struct{}
-	requestWhitelist  map[string]*netipx.IPSet
+	cfg     *config.Config
+	adapter db.DBAdapter
 }
 
 func GetPool(cfg *config.Config) (*Pool, error) {
@@ -37,54 +32,28 @@ func GetPool(cfg *config.Config) (*Pool, error) {
 		adapter: db,
 	}
 
-	// Init whitelists
-	p.clientWhitelist, err = makeIPSet(cfg.Pool.ClientConfig.Whitelist)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make client whitelist: %w", err)
-	}
-
-	p.resourceWhitelist = make(map[string]struct{})
-	for _, v := range cfg.Pool.ResourceConfig.Whitelist {
-		p.resourceWhitelist[v] = struct{}{}
-	}
-
-	setBuilderMap := make(map[string]*netipx.IPSetBuilder)
-	for _, v := range cfg.Pool.RequestConfig.Whitelist {
-		prefix, err := netip.ParsePrefix(v.Prefix)
-		if err != nil {
-			return nil, fmt.Errorf("failed to make request whitelist: %w", err)
-		}
-		b, ok := setBuilderMap[v.URL]
-		if !ok {
-			b := &netipx.IPSetBuilder{}
-			setBuilderMap[v.URL] = b
-		}
-
-		b.AddPrefix(prefix)
-	}
-
-	p.requestWhitelist = make(map[string]*netipx.IPSet)
-	for k, v := range setBuilderMap {
-		p.requestWhitelist[k], err = v.IPSet()
-		if err != nil {
-			return nil, fmt.Errorf("failed to make request whitelist: %w", err)
-		}
-	}
-
 	pool = p
 	return p, nil
 }
 
 func (p *Pool) ProcessRequest(req dto.Request) error {
-	// -- Filter with whitelist --
-	_, ok := p.resourceWhitelist[req.URL]
-	if ok || p.clientWhitelist.Contains(req.Client) {
+	// -- Apply filters --
+	// Apply include first, then exclude
+	include := false
+	for _, v := range p.cfg.Analyzer.Include {
+		if v.Match(req) {
+			include = true
+			break
+		}
+	}
+	if !include {
 		return nil
 	}
 
-	set, ok := p.requestWhitelist[req.URL]
-	if ok && set.Contains(req.Client) {
-		return nil
+	for _, v := range p.cfg.Analyzer.Exclude {
+		if v.Match(req) {
+			return nil
+		}
 	}
 
 	currentTime := time.Now()
