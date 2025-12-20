@@ -64,9 +64,17 @@ func TestPutAndGetClient(t *testing.T) {
 	adapter := setupTestDB(t)
 	client := createTestClient()
 
-	err := adapter.PutClient(client)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutClient(client)
 	if err != nil {
 		t.Errorf("Failed to put client: %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	gotClient, err := adapter.GetClient(client.Addr)
@@ -83,9 +91,17 @@ func TestPutAndGetResource(t *testing.T) {
 	adapter := setupTestDB(t)
 	resource := createTestResource()
 
-	err := adapter.PutResource(resource)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutResource(resource)
 	if err != nil {
 		t.Errorf("Failed to put resource: %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	gotResource, err := adapter.GetResource(resource.URL)
@@ -105,18 +121,26 @@ func TestPutAndGetRequest(t *testing.T) {
 	req := createTestRequest(client, resource)
 
 	// Need to put client and resource first for foreign key constraints
-	err := adapter.PutClient(client)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutClient(client)
 	if err != nil {
 		t.Fatalf("Failed to put client: %v", err)
 	}
-	err = adapter.PutResource(resource)
+	err = tx.PutResource(resource)
 	if err != nil {
 		t.Fatalf("Failed to put resource: %v", err)
 	}
 
-	err = adapter.PutRequest(req)
+	err = tx.PutRequest(req)
 	if err != nil {
 		t.Errorf("Failed to put request: %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	gotRequest, err := adapter.GetRequest(client.Addr, resource.URL)
@@ -133,9 +157,17 @@ func TestListClients(t *testing.T) {
 	adapter := setupTestDB(t)
 	client := createTestClient()
 
-	err := adapter.PutClient(client)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutClient(client)
 	if err != nil {
 		t.Fatalf("Failed to put client: %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	clients, err := adapter.ListClients()
@@ -159,18 +191,26 @@ func TestListRequests(t *testing.T) {
 	req := createTestRequest(client, resource)
 
 	// Need to put client and resource first for foreign key constraints
-	err := adapter.PutClient(client)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutClient(client)
 	if err != nil {
 		t.Fatalf("Failed to put client: %v", err)
 	}
-	err = adapter.PutResource(resource)
+	err = tx.PutResource(resource)
 	if err != nil {
 		t.Fatalf("Failed to put resource: %v", err)
 	}
 
-	err = adapter.PutRequest(req)
+	err = tx.PutRequest(req)
 	if err != nil {
 		t.Fatalf("Failed to put request: %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	requests, err := adapter.ListRequests(client.Addr)
@@ -193,18 +233,26 @@ func TestPutAndGetRule(t *testing.T) {
 	resource := createTestResource()
 	rule := createTestRule(client, resource)
 
-	err := adapter.PutClient(client)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutClient(client)
 	if err != nil {
 		t.Fatalf("Failed to put client: %v", err)
 	}
-	err = adapter.PutResource(resource)
+	err = tx.PutResource(resource)
 	if err != nil {
 		t.Fatalf("Failed to put resource: %v", err)
 	}
 
-	err = adapter.PutRule(rule)
+	err = tx.PutRule(rule)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	gotRule, err := adapter.GetRule(rule.Prefix)
@@ -223,18 +271,26 @@ func TestListRules(t *testing.T) {
 	resource := createTestResource()
 	rule := createTestRule(client, resource)
 
-	err := adapter.PutClient(client)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutClient(client)
 	if err != nil {
 		t.Fatalf("Failed to put client: %v", err)
 	}
-	err = adapter.PutResource(resource)
+	err = tx.PutResource(resource)
 	if err != nil {
 		t.Fatalf("Failed to put resource: %v", err)
 	}
 
-	err = adapter.PutRule(rule)
+	err = tx.PutRule(rule)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	rules, err := adapter.ListRules()
@@ -295,14 +351,22 @@ func TestDeleteClient(t *testing.T) {
 	adapter := setupTestDB(t)
 	client := createTestClient()
 
-	err := adapter.PutClient(client)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutClient(client)
 	if err != nil {
 		t.Fatalf("Failed to put client: %v", err)
 	}
 
-	err = adapter.DelClient(client.Addr)
+	err = tx.DelClient(client.Addr)
 	if err != nil {
 		t.Errorf("Failed to delete client: %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	gotClient, err := adapter.GetClient(client.Addr)
@@ -319,14 +383,22 @@ func TestDeleteResource(t *testing.T) {
 	adapter := setupTestDB(t)
 	resource := createTestResource()
 
-	err := adapter.PutResource(resource)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutResource(resource)
 	if err != nil {
 		t.Fatalf("Failed to put resource: %v", err)
 	}
 
-	err = adapter.DelResource(resource.URL)
+	err = tx.DelResource(resource.URL)
 	if err != nil {
 		t.Errorf("Failed to delete resource: %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	gotResource, err := adapter.GetResource(resource.URL)
@@ -346,23 +418,31 @@ func TestDeleteRequest(t *testing.T) {
 	req := createTestRequest(client, resource)
 
 	// Need to put client and resource first for foreign key constraints
-	err := adapter.PutClient(client)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutClient(client)
 	if err != nil {
 		t.Fatalf("Failed to put client: %v", err)
 	}
-	err = adapter.PutResource(resource)
+	err = tx.PutResource(resource)
 	if err != nil {
 		t.Fatalf("Failed to put resource: %v", err)
 	}
 
-	err = adapter.PutRequest(req)
+	err = tx.PutRequest(req)
 	if err != nil {
 		t.Fatalf("Failed to put request: %v", err)
 	}
 
-	err = adapter.DelRequest(client.Addr, resource.URL)
+	err = tx.DelRequest(client.Addr, resource.URL)
 	if err != nil {
 		t.Errorf("Failed to delete request: %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	gotRequest, err := adapter.GetRequest(client.Addr, resource.URL)
@@ -381,14 +461,22 @@ func TestDeleteRule(t *testing.T) {
 	resource := createTestResource()
 	rule := createTestRule(client, resource)
 
-	err := adapter.PutRule(rule)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutRule(rule)
 	if err != nil {
 		t.Fatalf("Failed to put resource: %v", err)
 	}
 
-	err = adapter.DelRule(rule.Prefix)
+	err = tx.DelRule(rule.Prefix)
 	if err != nil {
 		t.Errorf("Failed to delete resource: %v", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	getRule, err := adapter.GetRule(rule.Prefix)
@@ -429,14 +517,23 @@ func TestPutRequestWithoutClient(t *testing.T) {
 	}
 
 	// Put resource first
-	err := adapter.PutResource(resource)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutResource(resource)
 	if err != nil {
 		t.Fatalf("Failed to put resource: %v", err)
 	}
 
-	err = adapter.PutRequest(newRequest)
+	err = tx.PutRequest(newRequest)
 	if err == nil {
 		t.Errorf("Expected error, got none")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 }
 
@@ -446,11 +543,15 @@ func TestPuttingConflictingRequestReplacesExisting(t *testing.T) {
 	resource := createTestResource()
 
 	// Need to put client and resource first for foreign key constraints
-	err := adapter.PutClient(client)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutClient(client)
 	if err != nil {
 		t.Fatalf("Failed to put client: %v", err)
 	}
-	err = adapter.PutResource(resource)
+	err = tx.PutResource(resource)
 	if err != nil {
 		t.Fatalf("Failed to put resource: %v", err)
 	}
@@ -475,14 +576,19 @@ func TestPuttingConflictingRequestReplacesExisting(t *testing.T) {
 		ExpiresOn:  time.Now().Add(24 * time.Hour),
 	}
 
-	err = adapter.PutRequest(req1)
+	err = tx.PutRequest(req1)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
-	err = adapter.PutRequest(req2)
+	err = tx.PutRequest(req2)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	gotRequest, err := adapter.GetRequest(client.Addr, resource.URL)
@@ -501,11 +607,15 @@ func TestClientDeletionResultsInRequestCascade(t *testing.T) {
 	resource := createTestResource()
 
 	// Need to put client and resource first for foreign key constraints
-	err := adapter.PutClient(client)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutClient(client)
 	if err != nil {
 		t.Fatalf("Failed to put client: %v", err)
 	}
-	err = adapter.PutResource(resource)
+	err = tx.PutResource(resource)
 	if err != nil {
 		t.Fatalf("Failed to put resource: %v", err)
 	}
@@ -520,14 +630,19 @@ func TestClientDeletionResultsInRequestCascade(t *testing.T) {
 		ExpiresOn:  time.Now().Add(24 * time.Hour),
 	}
 
-	err = adapter.PutRequest(req)
+	err = tx.PutRequest(req)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
-	err = adapter.DelClient(client.Addr)
+	err = tx.DelClient(client.Addr)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	gotRequest, err := adapter.GetRequest(client.Addr, resource.URL)
@@ -555,11 +670,15 @@ func TestResourceDeletionFailsWithExistingRequest(t *testing.T) {
 	resource := createTestResource()
 
 	// Need to put client and resource first for foreign key constraints
-	err := adapter.PutClient(client)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutClient(client)
 	if err != nil {
 		t.Fatalf("Failed to put client: %v", err)
 	}
-	err = adapter.PutResource(resource)
+	err = tx.PutResource(resource)
 	if err != nil {
 		t.Fatalf("Failed to put resource: %v", err)
 	}
@@ -574,14 +693,19 @@ func TestResourceDeletionFailsWithExistingRequest(t *testing.T) {
 		ExpiresOn:  time.Now().Add(24 * time.Hour),
 	}
 
-	err = adapter.PutRequest(req)
+	err = tx.PutRequest(req)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
-	err = adapter.DelResource(resource.URL)
+	err = tx.DelResource(resource.URL)
 	if err == nil {
 		t.Errorf("Expected error, got none")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 }
 
@@ -591,11 +715,15 @@ func TestResourceDeletionFailsWithExistingRequestDuplicate(t *testing.T) {
 	resource := createTestResource()
 
 	// Need to put client and resource first for foreign key constraints
-	err := adapter.PutClient(client)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	err = tx.PutClient(client)
 	if err != nil {
 		t.Fatalf("Failed to put client: %v", err)
 	}
-	err = adapter.PutResource(resource)
+	err = tx.PutResource(resource)
 	if err != nil {
 		t.Fatalf("Failed to put resource: %v", err)
 	}
@@ -610,14 +738,19 @@ func TestResourceDeletionFailsWithExistingRequestDuplicate(t *testing.T) {
 		ExpiresOn:  time.Now().Add(24 * time.Hour),
 	}
 
-	err = adapter.PutRequest(req)
+	err = tx.PutRequest(req)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
-	err = adapter.DelResource(resource.URL)
+	err = tx.DelResource(resource.URL)
 	if err == nil {
 		t.Errorf("Expected error, got none")
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 }
 
@@ -669,12 +802,21 @@ func createExpiredTestRule(client Client, resource Resource) Rule {
 func TestFlushExpiredClients_Expired(t *testing.T) {
 	adapter := setupTestDB(t)
 	expiredClient := createExpiredTestClient()
-	if err := adapter.PutClient(expiredClient); err != nil {
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	if err := tx.PutClient(expiredClient); err != nil {
 		t.Fatalf("Failed to put expired client: %v", err)
 	}
 
-	if err := adapter.FlushExpiredClients(); err != nil {
+	if err := tx.FlushExpiredClients(); err != nil {
 		t.Fatalf("Failed to flush: %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	got, err := adapter.GetClient(expiredClient.Addr)
@@ -689,12 +831,21 @@ func TestFlushExpiredClients_Expired(t *testing.T) {
 func TestFlushExpiredClients_NonExpired(t *testing.T) {
 	adapter := setupTestDB(t)
 	nonExpiredClient := createTestClient()
-	if err := adapter.PutClient(nonExpiredClient); err != nil {
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	if err := tx.PutClient(nonExpiredClient); err != nil {
 		t.Fatalf("Failed to put non-expired client: %v", err)
 	}
 
-	if err := adapter.FlushExpiredClients(); err != nil {
+	if err := tx.FlushExpiredClients(); err != nil {
 		t.Fatalf("Failed to flush: %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	got, err := adapter.GetClient(nonExpiredClient.Addr)
@@ -711,12 +862,21 @@ func TestFlushExpiredClients_NonExpired(t *testing.T) {
 func TestFlushExpiredResources_Expired(t *testing.T) {
 	adapter := setupTestDB(t)
 	expiredResource := createExpiredTestResource()
-	if err := adapter.PutResource(expiredResource); err != nil {
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	if err := tx.PutResource(expiredResource); err != nil {
 		t.Fatalf("Failed to put expired resource: %v", err)
 	}
 
-	if err := adapter.FlushExpiredResources(); err != nil {
+	if err := tx.FlushExpiredResources(); err != nil {
 		t.Fatalf("Failed to flush: %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	got, err := adapter.GetResource(expiredResource.URL)
@@ -731,12 +891,21 @@ func TestFlushExpiredResources_Expired(t *testing.T) {
 func TestFlushExpiredResources_NonExpired(t *testing.T) {
 	adapter := setupTestDB(t)
 	nonExpiredResource := createTestResource()
-	if err := adapter.PutResource(nonExpiredResource); err != nil {
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	if err := tx.PutResource(nonExpiredResource); err != nil {
 		t.Fatalf("Failed to put non-expired resource: %v", err)
 	}
 
-	if err := adapter.FlushExpiredResources(); err != nil {
+	if err := tx.FlushExpiredResources(); err != nil {
 		t.Fatalf("Failed to flush: %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	got, err := adapter.GetResource(nonExpiredResource.URL)
@@ -753,16 +922,25 @@ func TestFlushExpiredResources_NonExpired(t *testing.T) {
 func TestFlushExpiredRequests_Expired(t *testing.T) {
 	adapter := setupTestDB(t)
 	client, resource := createTestClient(), createTestResource()
-	_ = adapter.PutClient(client)
-	_ = adapter.PutResource(resource)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	_ = tx.PutClient(client)
+	_ = tx.PutResource(resource)
 
 	expiredRequest := createExpiredTestRequest(client, resource)
-	if err := adapter.PutRequest(expiredRequest); err != nil {
+	if err := tx.PutRequest(expiredRequest); err != nil {
 		t.Fatalf("Failed to put expired request: %v", err)
 	}
 
-	if err := adapter.FlushExpiredRequests(); err != nil {
+	if err := tx.FlushExpiredRequests(); err != nil {
 		t.Fatalf("Failed to flush: %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	got, err := adapter.GetRequest(client.Addr, expiredRequest.URL)
@@ -777,16 +955,25 @@ func TestFlushExpiredRequests_Expired(t *testing.T) {
 func TestFlushExpiredRequests_NonExpired(t *testing.T) {
 	adapter := setupTestDB(t)
 	client, resource := createTestClient(), createTestResource()
-	_ = adapter.PutClient(client)
-	_ = adapter.PutResource(resource)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	_ = tx.PutClient(client)
+	_ = tx.PutResource(resource)
 
 	nonExpiredRequest := createTestRequest(client, resource)
-	if err := adapter.PutRequest(nonExpiredRequest); err != nil {
+	if err := tx.PutRequest(nonExpiredRequest); err != nil {
 		t.Fatalf("Failed to put non-expired request: %v", err)
 	}
 
-	if err := adapter.FlushExpiredRequests(); err != nil {
+	if err := tx.FlushExpiredRequests(); err != nil {
 		t.Fatalf("Failed to flush: %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	got, err := adapter.GetRequest(client.Addr, nonExpiredRequest.URL)
@@ -803,16 +990,25 @@ func TestFlushExpiredRequests_NonExpired(t *testing.T) {
 func TestFlushExpiredRules_Expired(t *testing.T) {
 	adapter := setupTestDB(t)
 	client, resource := createTestClient(), createTestResource()
-	_ = adapter.PutClient(client)
-	_ = adapter.PutResource(resource)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	_ = tx.PutClient(client)
+	_ = tx.PutResource(resource)
 
 	expiredRule := createExpiredTestRule(client, resource)
-	if err := adapter.PutRule(expiredRule); err != nil {
+	if err := tx.PutRule(expiredRule); err != nil {
 		t.Fatalf("Failed to put expired rule: %v", err)
 	}
 
-	if err := adapter.FlushExpiredRules(); err != nil {
+	if err := tx.FlushExpiredRules(); err != nil {
 		t.Fatalf("Failed to flush: %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	got, err := adapter.GetRule(expiredRule.Prefix)
@@ -827,16 +1023,25 @@ func TestFlushExpiredRules_Expired(t *testing.T) {
 func TestFlushExpiredRules_NonExpired(t *testing.T) {
 	adapter := setupTestDB(t)
 	client, resource := createTestClient(), createTestResource()
-	_ = adapter.PutClient(client)
-	_ = adapter.PutResource(resource)
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	_ = tx.PutClient(client)
+	_ = tx.PutResource(resource)
 
 	nonExpiredRule := createTestRule(client, resource)
-	if err := adapter.PutRule(nonExpiredRule); err != nil {
+	if err := tx.PutRule(nonExpiredRule); err != nil {
 		t.Fatalf("Failed to put non-expired rule: %v", err)
 	}
 
-	if err := adapter.FlushExpiredRules(); err != nil {
+	if err := tx.FlushExpiredRules(); err != nil {
 		t.Fatalf("Failed to flush: %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	got, err := adapter.GetRule(nonExpiredRule.Prefix)
@@ -851,22 +1056,31 @@ func TestFlushExpiredRules_NonExpired(t *testing.T) {
 func TestFlushExpiredResources_ReferredToByRequest(t *testing.T) {
 	adapter := setupTestDB(t)
 	expiredResource := createExpiredTestResource()
-	if err := adapter.PutResource(expiredResource); err != nil {
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
+	if err := tx.PutResource(expiredResource); err != nil {
 		t.Fatalf("Failed to put expired resource: %v", err)
 	}
 
 	// Create request referring to resource
 	client := createTestClient()
 	request := createTestRequest(client, expiredResource)
-	if err := adapter.PutClient(client); err != nil {
+	if err := tx.PutClient(client); err != nil {
 		t.Fatalf("Failed to put client: %v", err)
 	}
-	if err := adapter.PutRequest(request); err != nil {
+	if err := tx.PutRequest(request); err != nil {
 		t.Fatalf("Failed to put request: %v", err)
 	}
 
-	if err := adapter.FlushExpiredResources(); err != nil {
+	if err := tx.FlushExpiredResources(); err != nil {
 		t.Fatalf("Failed to flush: %v", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	got, err := adapter.GetResource(expiredResource.URL)
@@ -908,14 +1122,18 @@ func TestFilterRequestsBySendRatio(t *testing.T) {
 		},
 	}
 
+	tx, err := adapter.Begin()
+	if err != nil {
+		t.Errorf("Failed to get tx: %v", err)
+	}
 	for _, res := range resources {
-		err := adapter.PutResource(res)
+		err := tx.PutResource(res)
 		if err != nil {
 			t.Fatalf("Failed to put resource: %v", err)
 		}
 	}
 
-	err := adapter.PutClient(client)
+	err = tx.PutClient(client)
 	if err != nil {
 		t.Fatalf("Failed to put client: %v", err)
 	}
@@ -927,10 +1145,15 @@ func TestFilterRequestsBySendRatio(t *testing.T) {
 	}
 
 	for _, req := range requests {
-		err := adapter.PutRequest(req)
+		err := tx.PutRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to seed request data: %v", err)
 		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		t.Errorf("Failed to commit tx: %v", err)
 	}
 
 	// Fetch > 1.45

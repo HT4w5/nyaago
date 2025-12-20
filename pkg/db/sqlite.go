@@ -55,6 +55,38 @@ type SqliteAdapter struct {
 	db *sql.DB
 }
 
+func (a *SqliteAdapter) Begin() (DBTx, error) {
+	tx, err := a.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	return &SqliteTx{
+		tx: tx,
+	}, nil
+}
+
+/* SqliteTx implements DBTx */
+
+type SqliteTx struct {
+	tx *sql.Tx
+}
+
+func (t *SqliteTx) Commit() error {
+	err := t.tx.Commit()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *SqliteTx) Rollback() error {
+	err := t.tx.Rollback()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func makeSqliteAdapter(dbFile string) (*SqliteAdapter, error) {
 	db, err := sql.Open("sqlite3", dbFile)
 	if err != nil {
@@ -78,8 +110,8 @@ func makeSqliteAdapter(dbFile string) (*SqliteAdapter, error) {
 	return s, nil
 }
 
-func (s *SqliteAdapter) initializeSchema() error {
-	tx, err := s.db.Begin()
+func (a *SqliteAdapter) initializeSchema() error {
+	tx, err := a.db.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
@@ -174,19 +206,19 @@ func (s *SqliteAdapter) initializeSchema() error {
 
 /* DBAdapter defined functions */
 
-func (s *SqliteAdapter) Close() error {
-	return s.db.Close()
+func (a *SqliteAdapter) Close() error {
+	return a.db.Close()
 }
 
-func (s *SqliteAdapter) Info() string {
+func (a *SqliteAdapter) Info() string {
 	var version string
-	s.db.QueryRow(`SELECT sqlite_version()`).Scan(&version)
+	a.db.QueryRow(`SELECT sqlite_version()`).Scan(&version)
 	return fmt.Sprintf(versionString, version)
 }
 
 /* Resources */
 
-func (s *SqliteAdapter) GetResource(url string) (Resource, error) {
+func (a *SqliteAdapter) GetResource(url string) (Resource, error) {
 	var res Resource
 	query := fmt.Sprintf("SELECT %s, %s, %s FROM %s WHERE %s = ?",
 		sqliteResourcesColURL,
@@ -196,7 +228,7 @@ func (s *SqliteAdapter) GetResource(url string) (Resource, error) {
 		sqliteResourcesColURL,
 	)
 	var expiresOn int64
-	err := s.db.QueryRow(query, url).Scan(&res.URL, &res.Size, &expiresOn)
+	err := a.db.QueryRow(query, url).Scan(&res.URL, &res.Size, &expiresOn)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return Resource{}, nil // Resource not found
@@ -207,7 +239,7 @@ func (s *SqliteAdapter) GetResource(url string) (Resource, error) {
 	return res, nil
 }
 
-func (s *SqliteAdapter) PutResource(res Resource) error {
+func (t *SqliteTx) PutResource(res Resource) error {
 	query := fmt.Sprintf("INSERT INTO %s (%s, %s, %s) VALUES (?, ?, ?) ON CONFLICT(%s) DO UPDATE SET %s = excluded.%s, %s = excluded.%s, %s = excluded.%s",
 		sqliteTableResources,
 		sqliteResourcesColURL,
@@ -221,30 +253,30 @@ func (s *SqliteAdapter) PutResource(res Resource) error {
 		sqliteResourcesColExpiresOn,
 		sqliteResourcesColExpiresOn,
 	)
-	_, err := s.db.Exec(query, res.URL, res.Size, res.ExpiresOn.Unix())
+	_, err := t.tx.Exec(query, res.URL, res.Size, res.ExpiresOn.Unix())
 	if err != nil {
 		return fmt.Errorf("failed to put resource: %w", err)
 	}
 	return nil
 }
 
-func (s *SqliteAdapter) DelResource(url string) error {
+func (t *SqliteTx) DelResource(url string) error {
 	query := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", sqliteTableResources, sqliteResourcesColURL)
-	_, err := s.db.Exec(query, url)
+	_, err := t.tx.Exec(query, url)
 	if err != nil {
 		return fmt.Errorf("failed to delete resource: %w", err)
 	}
 	return nil
 }
 
-func (s *SqliteAdapter) FlushExpiredResources() error {
+func (t *SqliteTx) FlushExpiredResources() error {
 	query := fmt.Sprintf(
 		"DELETE FROM %s WHERE %s < ?;",
 		sqliteTableResources,
 		sqliteResourcesColExpiresOn,
 	)
 	currentTime := time.Now().Unix()
-	_, err := s.db.Exec(query, currentTime)
+	_, err := t.tx.Exec(query, currentTime)
 	// Ignore expired resources referred to by requests
 	var sqliteErr sqlite3.ErrorCode
 	if err == nil || (errors.As(err, &sqliteErr) && sqliteErr == sqlite3.CONSTRAINT) {
@@ -256,7 +288,7 @@ func (s *SqliteAdapter) FlushExpiredResources() error {
 
 /* Clients */
 
-func (s *SqliteAdapter) GetClient(addr netip.Addr) (Client, error) {
+func (a *SqliteAdapter) GetClient(addr netip.Addr) (Client, error) {
 	var cli Client
 	query := fmt.Sprintf("SELECT %s, %s, %s, %s FROM %s WHERE %s = ?",
 		sqliteClientsColAddr,
@@ -268,7 +300,7 @@ func (s *SqliteAdapter) GetClient(addr netip.Addr) (Client, error) {
 	)
 	var createdOn, expiresOn int64
 	var addrStr string
-	err := s.db.QueryRow(query, addr.String()).Scan(&addrStr, &cli.TotalSent, &createdOn, &expiresOn)
+	err := a.db.QueryRow(query, addr.String()).Scan(&addrStr, &cli.TotalSent, &createdOn, &expiresOn)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return Client{}, nil // Client not found
@@ -284,7 +316,7 @@ func (s *SqliteAdapter) GetClient(addr netip.Addr) (Client, error) {
 	return cli, nil
 }
 
-func (s *SqliteAdapter) PutClient(cli Client) error {
+func (t *SqliteTx) PutClient(cli Client) error {
 	query := fmt.Sprintf("INSERT INTO %s (%s, %s, %s, %s) VALUES (?, ?, ?, ?) ON CONFLICT(%s) DO UPDATE SET %s = excluded.%s, %s = excluded.%s, %s = excluded.%s, %s = excluded.%s",
 		sqliteTableClients,
 		sqliteClientsColAddr,
@@ -301,23 +333,23 @@ func (s *SqliteAdapter) PutClient(cli Client) error {
 		sqliteClientsColAddr,
 		sqliteClientsColAddr,
 	)
-	_, err := s.db.Exec(query, cli.Addr.String(), cli.TotalSent, cli.CreatedOn.Unix(), cli.ExpiresOn.Unix())
+	_, err := t.tx.Exec(query, cli.Addr.String(), cli.TotalSent, cli.CreatedOn.Unix(), cli.ExpiresOn.Unix())
 	if err != nil {
 		return fmt.Errorf("failed to put client: %w", err)
 	}
 	return nil
 }
 
-func (s *SqliteAdapter) DelClient(addr netip.Addr) error {
+func (t *SqliteTx) DelClient(addr netip.Addr) error {
 	query := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", sqliteTableClients, sqliteClientsColAddr)
-	_, err := s.db.Exec(query, addr.String())
+	_, err := t.tx.Exec(query, addr.String())
 	if err != nil {
 		return fmt.Errorf("failed to delete client: %w", err)
 	}
 	return nil
 }
 
-func (s *SqliteAdapter) ListClients() ([]Client, error) {
+func (a *SqliteAdapter) ListClients() ([]Client, error) {
 	var clients []Client
 	query := fmt.Sprintf("SELECT %s, %s, %s, %s FROM %s",
 		sqliteClientsColAddr,
@@ -326,7 +358,7 @@ func (s *SqliteAdapter) ListClients() ([]Client, error) {
 		sqliteClientsColExpiresOn,
 		sqliteTableClients,
 	)
-	rows, err := s.db.Query(query)
+	rows, err := a.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query clients: %w", err)
 	}
@@ -356,14 +388,14 @@ func (s *SqliteAdapter) ListClients() ([]Client, error) {
 	return clients, nil
 }
 
-func (s *SqliteAdapter) FlushExpiredClients() error {
+func (t *SqliteTx) FlushExpiredClients() error {
 	query := fmt.Sprintf(
 		"DELETE FROM %s WHERE %s < ?;",
 		sqliteTableClients,
 		sqliteClientsColExpiresOn,
 	)
 	currentTime := time.Now().Unix()
-	_, err := s.db.Exec(query, currentTime)
+	_, err := t.tx.Exec(query, currentTime)
 	if err != nil {
 		return fmt.Errorf("failed to flush expired clients: %w", err)
 	}
@@ -372,7 +404,7 @@ func (s *SqliteAdapter) FlushExpiredClients() error {
 
 /* Requests */
 
-func (s *SqliteAdapter) GetRequest(addr netip.Addr, url string) (Request, error) {
+func (a *SqliteAdapter) GetRequest(addr netip.Addr, url string) (Request, error) {
 	var req Request
 	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s, %s FROM %s WHERE %s = ? AND %s = ?",
 		sqliteRequestsColAddr,
@@ -388,7 +420,7 @@ func (s *SqliteAdapter) GetRequest(addr netip.Addr, url string) (Request, error)
 	)
 	var createdOn, expiresOn int64
 	var addrStr string
-	err := s.db.QueryRow(query, addr.String(), url).Scan(&addrStr, &req.URL, &req.TotalSent, &req.SendRatio, &req.Occurrence, &createdOn, &expiresOn)
+	err := a.db.QueryRow(query, addr.String(), url).Scan(&addrStr, &req.URL, &req.TotalSent, &req.SendRatio, &req.Occurrence, &createdOn, &expiresOn)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return Request{}, nil // Request not found
@@ -404,7 +436,7 @@ func (s *SqliteAdapter) GetRequest(addr netip.Addr, url string) (Request, error)
 	return req, nil
 }
 
-func (s *SqliteAdapter) PutRequest(req Request) error {
+func (t *SqliteTx) PutRequest(req Request) error {
 	query := fmt.Sprintf("INSERT INTO %s (%s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(%s, %s) DO UPDATE SET %s = excluded.%s, %s = excluded.%s, %s = excluded.%s, %s = excluded.%s,  %s = excluded.%s",
 		sqliteTableRequests,
 		sqliteRequestsColAddr,
@@ -427,16 +459,16 @@ func (s *SqliteAdapter) PutRequest(req Request) error {
 		sqliteRequestsColExpiresOn,
 		sqliteRequestsColExpiresOn,
 	)
-	_, err := s.db.Exec(query, req.Addr.String(), req.URL, req.TotalSent, req.SendRatio, req.Occurrence, req.CreatedOn.Unix(), req.ExpiresOn.Unix())
+	_, err := t.tx.Exec(query, req.Addr.String(), req.URL, req.TotalSent, req.SendRatio, req.Occurrence, req.CreatedOn.Unix(), req.ExpiresOn.Unix())
 	if err != nil {
 		return fmt.Errorf("failed to put request: %w", err)
 	}
 	return nil
 }
 
-func (s *SqliteAdapter) DelRequest(addr netip.Addr, url string) error {
+func (t *SqliteTx) DelRequest(addr netip.Addr, url string) error {
 	query := fmt.Sprintf("DELETE FROM %s WHERE %s = ? AND %s = ?", sqliteTableRequests, sqliteRequestsColAddr, sqliteRequestsColURL)
-	_, err := s.db.Exec(query, addr.String(), url)
+	_, err := t.tx.Exec(query, addr.String(), url)
 	if err != nil {
 		return fmt.Errorf("failed to delete request: %w", err)
 	}
@@ -444,7 +476,7 @@ func (s *SqliteAdapter) DelRequest(addr netip.Addr, url string) error {
 	return nil
 }
 
-func (s *SqliteAdapter) ListRequests(addr netip.Addr) ([]Request, error) {
+func (a *SqliteAdapter) ListRequests(addr netip.Addr) ([]Request, error) {
 	var requests []Request
 	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s, %s FROM %s WHERE %s = ?",
 		sqliteRequestsColAddr,
@@ -457,7 +489,7 @@ func (s *SqliteAdapter) ListRequests(addr netip.Addr) ([]Request, error) {
 		sqliteTableRequests,
 		sqliteRequestsColAddr,
 	)
-	rows, err := s.db.Query(query, addr.String())
+	rows, err := a.db.Query(query, addr.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to list requests: %w", err)
 	}
@@ -487,7 +519,7 @@ func (s *SqliteAdapter) ListRequests(addr netip.Addr) ([]Request, error) {
 	return requests, nil
 }
 
-func (s *SqliteAdapter) FilterRequests(minSendRatio float64, maturationThreshold int) ([]Request, error) {
+func (a *SqliteAdapter) FilterRequests(minSendRatio float64, maturationThreshold int) ([]Request, error) {
 	var requests []Request
 	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s, %s FROM %s WHERE %s >= ? AND %s >= ?",
 		sqliteRequestsColAddr,
@@ -501,7 +533,7 @@ func (s *SqliteAdapter) FilterRequests(minSendRatio float64, maturationThreshold
 		sqliteRequestsColSendRatio,
 		sqliteRequestsColOccurrence,
 	)
-	rows, err := s.db.Query(query, minSendRatio, maturationThreshold)
+	rows, err := a.db.Query(query, minSendRatio, maturationThreshold)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list requests: %w", err)
 	}
@@ -531,14 +563,14 @@ func (s *SqliteAdapter) FilterRequests(minSendRatio float64, maturationThreshold
 	return requests, nil
 }
 
-func (s *SqliteAdapter) FlushExpiredRequests() error {
+func (t *SqliteTx) FlushExpiredRequests() error {
 	query := fmt.Sprintf(
 		"DELETE FROM %s WHERE %s < ?;",
 		sqliteTableRequests,
 		sqliteRequestsColExpiresOn,
 	)
 	currentTime := time.Now().Unix()
-	_, err := s.db.Exec(query, currentTime)
+	_, err := t.tx.Exec(query, currentTime)
 	if err != nil {
 		return fmt.Errorf("failed to flush expired requests: %w", err)
 	}
@@ -547,7 +579,7 @@ func (s *SqliteAdapter) FlushExpiredRequests() error {
 
 /* Rules */
 
-func (s *SqliteAdapter) GetRule(prefix netip.Prefix) (Rule, error) {
+func (a *SqliteAdapter) GetRule(prefix netip.Prefix) (Rule, error) {
 	var rule Rule
 	query := fmt.Sprintf("SELECT %s, %s, %s, %s FROM %s WHERE %s = ?",
 		sqliteRulesColPrefix,
@@ -559,7 +591,7 @@ func (s *SqliteAdapter) GetRule(prefix netip.Prefix) (Rule, error) {
 	)
 	var expiresOn int64
 	var prefixStr, addrStr string
-	err := s.db.QueryRow(query, prefix.Masked().String()).Scan(&prefixStr, &addrStr, &rule.URL, &expiresOn)
+	err := a.db.QueryRow(query, prefix.Masked().String()).Scan(&prefixStr, &addrStr, &rule.URL, &expiresOn)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return Rule{}, nil // Rule not found
@@ -579,7 +611,7 @@ func (s *SqliteAdapter) GetRule(prefix netip.Prefix) (Rule, error) {
 	return rule, nil
 }
 
-func (s *SqliteAdapter) PutRule(rule Rule) error {
+func (t *SqliteTx) PutRule(rule Rule) error {
 	query := fmt.Sprintf("INSERT INTO %s (%s, %s, %s, %s) VALUES (?, ?, ?, ?) ON CONFLICT(%s) DO UPDATE SET %s = excluded.%s, %s = excluded.%s, %s = excluded.%s, %s = excluded.%s",
 		sqliteTableRules,
 		sqliteRulesColPrefix,
@@ -596,23 +628,23 @@ func (s *SqliteAdapter) PutRule(rule Rule) error {
 		sqliteRulesColPrefix,
 		sqliteRulesColPrefix,
 	)
-	_, err := s.db.Exec(query, rule.Prefix.Masked().String(), rule.Addr.String(), rule.URL, rule.ExpiresOn.Unix())
+	_, err := t.tx.Exec(query, rule.Prefix.Masked().String(), rule.Addr.String(), rule.URL, rule.ExpiresOn.Unix())
 	if err != nil {
 		return fmt.Errorf("failed to put rule: %w", err)
 	}
 	return nil
 }
 
-func (s *SqliteAdapter) DelRule(prefix netip.Prefix) error {
+func (t *SqliteTx) DelRule(prefix netip.Prefix) error {
 	query := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", sqliteTableRules, sqliteRulesColPrefix)
-	_, err := s.db.Exec(query, prefix.Masked().String())
+	_, err := t.tx.Exec(query, prefix.Masked().String())
 	if err != nil {
 		return fmt.Errorf("failed to delete rule: %w", err)
 	}
 	return nil
 }
 
-func (s *SqliteAdapter) ListRules() ([]Rule, error) {
+func (a *SqliteAdapter) ListRules() ([]Rule, error) {
 	var rules []Rule
 	query := fmt.Sprintf("SELECT %s, %s, %s, %s FROM %s",
 		sqliteRulesColPrefix,
@@ -621,7 +653,7 @@ func (s *SqliteAdapter) ListRules() ([]Rule, error) {
 		sqliteRulesColExpiresOn,
 		sqliteTableRules,
 	)
-	rows, err := s.db.Query(query)
+	rows, err := a.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list rules: %w", err)
 	}
@@ -655,14 +687,14 @@ func (s *SqliteAdapter) ListRules() ([]Rule, error) {
 	return rules, nil
 }
 
-func (s *SqliteAdapter) FlushExpiredRules() error {
+func (t *SqliteTx) FlushExpiredRules() error {
 	query := fmt.Sprintf(
 		"DELETE FROM %s WHERE %s < ?;",
 		sqliteTableRules,
 		sqliteRulesColExpiresOn,
 	)
 	currentTime := time.Now().Unix()
-	_, err := s.db.Exec(query, currentTime)
+	_, err := t.tx.Exec(query, currentTime)
 	if err != nil {
 		return fmt.Errorf("failed to flush expired rules: %w", err)
 	}
