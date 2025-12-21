@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	LoggerKeyModule = "module"
-	LoggerKeyError  = "error"
+	SlogKeyModule = "module"
+	SlogKeyError  = "error"
 )
 
 func SetupLogger(cfg *config.LogConfig) (*slog.Logger, error) {

@@ -19,7 +19,7 @@ func (s *Server) runPostExec(ctx context.Context) {
 
 		err := cmd.Run()
 		if err != nil {
-			s.logger.Error("failed to run postexec", "tag", v.Tag, logging.LoggerKeyError, err)
+			s.logger.Error("failed to run postexec", "tag", v.Tag, logging.SlogKeyError, err)
 		}
 	}
 }

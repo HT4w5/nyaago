@@ -2,7 +2,7 @@ package config
 
 type EgressConfig struct {
 	Path     string           `json:"path"`
-	Type     string           `json:"type"`
+	Format   string           `json:"format"`
 	PostExec []PostExecConfig `json:"post_exec"`
 }
 

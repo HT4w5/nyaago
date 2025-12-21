@@ -41,8 +41,7 @@ func getDefault() Config {
 	cfg.Analyzer.BanPrefixLength.IPv4 = 24
 	cfg.Analyzer.BanPrefixLength.IPv6 = 64
 
-	cfg.API.Addr = "0.0.0.0"
-	cfg.API.Port = 80
+	cfg.API.ListenAddr = "0.0.0.0:80"
 
 	return cfg
 }

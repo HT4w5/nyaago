@@ -12,11 +12,11 @@ type Formatter interface {
 	Info() string
 }
 
-func MakeFormatter(fType string, info string) (Formatter, error) {
-	switch fType {
+func MakeFormatter(format string, info string) (Formatter, error) {
+	switch format {
 	case "nginx":
 		return makeNginxFormatter(info), nil
 	default:
-		return nil, fmt.Errorf("unsupported formatter type %s", fType)
+		return nil, fmt.Errorf("unsupported formatter type %s", format)
 	}
 }

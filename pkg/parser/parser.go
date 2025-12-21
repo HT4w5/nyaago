@@ -10,11 +10,11 @@ type Parser interface {
 	Parse(line []byte) (dto.Request, error)
 }
 
-func MakeParser(logType string) (Parser, error) {
-	switch logType {
+func MakeParser(logFormat string) (Parser, error) {
+	switch logFormat {
 	case "nginxjson":
 		return &NginxJSONParser{}, nil
 	default:
-		return nil, fmt.Errorf("unsupported log format: %s", logType)
+		return nil, fmt.Errorf("unsupported log format: %s", logFormat)
 	}
 }

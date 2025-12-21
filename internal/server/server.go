@@ -7,20 +7,20 @@ import (
 	"net/http"
 
 	"github.com/HT4w5/nyaago/internal/config"
+	"github.com/HT4w5/nyaago/internal/ingress"
 	"github.com/HT4w5/nyaago/internal/logging"
 	"github.com/HT4w5/nyaago/internal/pool"
-	"github.com/HT4w5/nyaago/internal/tail"
 	"github.com/gin-gonic/gin"
 	"github.com/go-co-op/gocron/v2"
 	sloggin "github.com/samber/slog-gin"
 )
 
 const (
-	loggerModuleNameServer = "server"
-	loggerModuleNameCron   = "cron"
+	slogModuleNameServer = "server"
+	slogModuleNameCron   = "cron"
 
-	loggerGroupNameServer = "server"
-	loggerGroupNameCron   = "cron"
+	slogGroupNameServer = "server"
+	slogGroupNameCron   = "cron"
 )
 
 type Server struct {
@@ -28,7 +28,7 @@ type Server struct {
 	router *gin.Engine
 	srv    *http.Server
 	pool   *pool.Pool
-	tail   *tail.Tail
+	ia     ingress.IngressAdapter
 	cron   gocron.Scheduler
 	logger *slog.Logger
 }
@@ -54,7 +54,7 @@ func GetServer(cfg *config.Config) (*Server, error) {
 
 	// Create cron scheduler
 	s.cron, err = gocron.NewScheduler(
-		gocron.WithLogger(logger.With(logging.LoggerKeyModule, loggerModuleNameCron).WithGroup(loggerGroupNameCron)),
+		gocron.WithLogger(logger.With(logging.SlogKeyModule, slogModuleNameCron).WithGroup(slogGroupNameCron)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cron scheduler: %w", err)
@@ -72,11 +72,7 @@ func GetServer(cfg *config.Config) (*Server, error) {
 
 	// Setup HTTP server
 	s.srv = &http.Server{
-		Addr: fmt.Sprintf(
-			"%s:%d",
-			s.cfg.API.Addr,
-			s.cfg.API.Port,
-		),
+		Addr:    cfg.API.ListenAddr,
 		Handler: s.router,
 	}
 
@@ -86,13 +82,13 @@ func GetServer(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create pool: %w", err)
 	}
 
-	// Create tail
-	s.tail, err = tail.MakeTail(&cfg.Ingress, logger)
+	// Create ingress adapter
+	s.ia, err = ingress.MakeIngressAdapter(&cfg.Ingress, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create tail: %w", err)
+		return nil, fmt.Errorf("failed to create ingress adapter: %w", err)
 	}
 
-	s.logger = logger.With(logging.LoggerKeyModule, loggerModuleNameServer).WithGroup(loggerGroupNameServer)
+	s.logger = logger.With(logging.SlogKeyModule, slogModuleNameServer).WithGroup(slogGroupNameServer)
 
 	server = s
 	return s, nil
@@ -108,7 +104,7 @@ func (s *Server) Start(ctx context.Context, cancel context.CancelFunc) {
 	// HTTP server
 	go func() {
 		if err := s.srv.ListenAndServe(); err != http.ErrServerClosed && err != nil {
-			s.logger.Error("listen failed", logging.LoggerKeyError, err)
+			s.logger.Error("listen failed", logging.SlogKeyError, err)
 		}
 	}()
 }
@@ -117,11 +113,11 @@ func (s *Server) Shutdown(ctx context.Context) {
 	s.logger.Info("shutting down")
 	err := s.srv.Shutdown(ctx)
 	if err != nil {
-		s.logger.Error("failed to shutdown HTTP server", logging.LoggerKeyError, err)
+		s.logger.Error("failed to shutdown HTTP server", logging.SlogKeyError, err)
 	}
 	err = s.cron.Shutdown()
 	if err != nil {
-		s.logger.Error("failed to shutdown gocron scheduler", logging.LoggerKeyError, err)
+		s.logger.Error("failed to shutdown gocron scheduler", logging.SlogKeyError, err)
 	}
 	s.logger.Info("exiting")
 }
