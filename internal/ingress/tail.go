@@ -11,13 +11,12 @@ import (
 	"github.com/HT4w5/nyaago/pkg/dto"
 	"github.com/HT4w5/nyaago/pkg/parser"
 	"github.com/nxadm/tail"
-	tailutil "github.com/nxadm/tail"
 )
 
 type TailIngress struct {
 	cfg    *config.IngressConfig
 	parser parser.Parser
-	tail   *tailutil.Tail
+	t      *tail.Tail
 	logger *slog.Logger
 }
 
@@ -29,7 +28,7 @@ func makeTailIngress(cfg *config.IngressConfig, p parser.Parser, logger *slog.Lo
 
 	// Setup tail
 	var err error
-	i.tail, err = tail.TailFile(cfg.Tail.Path, tailutil.Config{
+	i.t, err = tail.TailFile(cfg.Tail.Path, tail.Config{
 		Follow:    true,
 		ReOpen:    true,
 		MustExist: false,
@@ -53,13 +52,13 @@ func (i *TailIngress) Start(ctx context.Context, out chan<- dto.Request, cancel 
 		select {
 		case <-ctx.Done():
 			i.logger.Info("shutting down tail")
-			i.tail.Stop()
-			i.tail.Cleanup()
+			i.t.Stop()
+			i.t.Cleanup()
 			return
-		case line := <-i.tail.Lines:
+		case line := <-i.t.Lines:
 			if line == nil {
 				// Tail failed, cancel global context
-				err := i.tail.Wait()
+				err := i.t.Wait()
 				i.logger.Error("tail failed", logging.SlogKeyError, err)
 				cancel()
 				return
