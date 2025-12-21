@@ -23,7 +23,6 @@ const (
 
 type IngressAdapter interface {
 	Start(ctx context.Context, out chan<- dto.Request, cancel context.CancelFunc)
-	Close()
 }
 
 func MakeIngressAdapter(cfg *config.IngressConfig, logger *slog.Logger) (IngressAdapter, error) {
@@ -41,13 +40,19 @@ func MakeIngressAdapter(cfg *config.IngressConfig, logger *slog.Logger) (Ingress
 	}
 
 	// Setup logger
-	logger = logger.With(logging.SlogKeyModule, slogModuleName).WithGroup(slogModuleName)
+	logger = logger.With(logging.SlogKeyModule, slogModuleName).WithGroup(slogGroupName)
 
 	switch cfg.Method {
 	case "tail":
 		ti, err := makeTailIngress(cfg, p, logger)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create tail ingress: %w", err)
+		}
+		return ti, nil
+	case "syslog":
+		ti, err := makeSyslogIngress(cfg, p, logger)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create syslog ingress: %w", err)
 		}
 		return ti, nil
 	default:

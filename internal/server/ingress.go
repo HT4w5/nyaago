@@ -8,9 +8,10 @@ import (
 )
 
 func (s *Server) runIngressWorker(ctx context.Context, cancel context.CancelFunc) {
+	s.logger.Info("starting ingress worker")
 	requestChan := make(chan dto.Request)
 
-	// Start tail worker
+	// Start ingress adapter
 	go s.ia.Start(ctx, requestChan, cancel)
 
 	// Worker loop

@@ -22,19 +22,19 @@ type TailIngress struct {
 }
 
 func makeTailIngress(cfg *config.IngressConfig, p parser.Parser, logger *slog.Logger) (*TailIngress, error) {
-	t := &TailIngress{
+	i := &TailIngress{
 		parser: p,
 		logger: logger,
 	}
 
 	// Setup tail
 	var err error
-	t.tail, err = tail.TailFile(cfg.Tail.Path, tailutil.Config{
+	i.tail, err = tail.TailFile(cfg.Tail.Path, tailutil.Config{
 		Follow:    true,
 		ReOpen:    true,
 		MustExist: false,
 		Poll:      cfg.Tail.Poll,
-		Logger:    slog.NewLogLogger(t.logger.Handler(), slog.LevelInfo),
+		Logger:    slog.NewLogLogger(i.logger.Handler(), slog.LevelInfo),
 		Location: &tail.SeekInfo{
 			Offset: 0,
 			Whence: io.SeekEnd,
@@ -44,14 +44,17 @@ func makeTailIngress(cfg *config.IngressConfig, p parser.Parser, logger *slog.Lo
 		return nil, fmt.Errorf("failed to create tail: %w", err)
 	}
 
-	return t, nil
+	return i, nil
 }
 
 func (i *TailIngress) Start(ctx context.Context, out chan<- dto.Request, cancel context.CancelFunc) {
+	i.logger.Info("starting tail")
 	for {
 		select {
 		case <-ctx.Done():
+			i.logger.Info("shutting down tail")
 			i.tail.Stop()
+			i.tail.Cleanup()
 			return
 		case line := <-i.tail.Lines:
 			if line == nil {
@@ -64,15 +67,10 @@ func (i *TailIngress) Start(ctx context.Context, out chan<- dto.Request, cancel 
 			i.logger.Debug("line received", "content", line.Text)
 			req, err := i.parser.Parse([]byte(line.Text))
 			if err != nil {
-				i.logger.Error("failed to parse line", slogKeyMethod, i.cfg.Method, slogKeyLogFormat, i.cfg.Format, slogKeySource, i.cfg.Tail.Path, slogKeyLine, line)
+				i.logger.Error("failed to parse line", slogKeyMethod, i.cfg.Method, slogKeyLogFormat, i.cfg.Format, slogKeySource, i.cfg.Tail.Path, slogKeyLine, line.Text)
 				continue
 			}
 			out <- req
 		}
 	}
-}
-
-func (t *TailIngress) Close() {
-	t.logger.Info("shutting down tail")
-	t.tail.Cleanup()
 }

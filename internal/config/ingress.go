@@ -8,7 +8,7 @@ type IngressConfig struct {
 }
 
 type SyslogConfig struct {
-	Protocol   string `json:"protocol"`
+	Transport  string `json:"transport"`
 	ListenAddr string `json:"listen_addr"`
 }
 
