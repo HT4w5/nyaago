@@ -519,9 +519,9 @@ func (a *SqliteAdapter) ListRequests(addr netip.Addr) ([]Request, error) {
 	return requests, nil
 }
 
-func (a *SqliteAdapter) FilterRequests(minSendRatio float64, maturationThreshold int) ([]Request, error) {
+func (a *SqliteAdapter) FilterRequests(minSendRatio float64, createdBefore time.Time) ([]Request, error) {
 	var requests []Request
-	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s, %s FROM %s WHERE %s >= ? AND %s >= ?",
+	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s, %s FROM %s WHERE %s >= ? AND %s < ?",
 		sqliteRequestsColAddr,
 		sqliteRequestsColURL,
 		sqliteRequestsColTotalSent,
@@ -531,9 +531,9 @@ func (a *SqliteAdapter) FilterRequests(minSendRatio float64, maturationThreshold
 		sqliteRequestsColExpiresOn,
 		sqliteTableRequests,
 		sqliteRequestsColSendRatio,
-		sqliteRequestsColOccurrence,
+		sqliteClientsColCreatedOn,
 	)
-	rows, err := a.db.Query(query, minSendRatio, maturationThreshold)
+	rows, err := a.db.Query(query, minSendRatio, createdBefore.Unix())
 	if err != nil {
 		return nil, fmt.Errorf("failed to list requests: %w", err)
 	}

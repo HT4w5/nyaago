@@ -1138,10 +1138,12 @@ func TestFilterRequestsBySendRatio(t *testing.T) {
 		t.Fatalf("Failed to put client: %v", err)
 	}
 
+	currentTime := time.Now()
+
 	requests := []Request{
-		{Addr: addr, URL: "/low", TotalSent: 10, SendRatio: 0.38, Occurrence: 3, CreatedOn: time.Now(), ExpiresOn: time.Now().Add(time.Hour)},
-		{Addr: addr, URL: "/high", TotalSent: 100, SendRatio: 5.46, Occurrence: 1, CreatedOn: time.Now(), ExpiresOn: time.Now().Add(time.Hour)},
-		{Addr: addr, URL: "/mid", TotalSent: 50, SendRatio: 1.56, Occurrence: 2, CreatedOn: time.Now(), ExpiresOn: time.Now().Add(time.Hour)},
+		{Addr: addr, URL: "/low", TotalSent: 10, SendRatio: 0.38, Occurrence: 3, CreatedOn: currentTime.Add(-3 * time.Hour), ExpiresOn: currentTime.Add(time.Hour)},
+		{Addr: addr, URL: "/high", TotalSent: 100, SendRatio: 5.46, Occurrence: 1, CreatedOn: currentTime.Add(-time.Hour), ExpiresOn: currentTime.Add(time.Hour)},
+		{Addr: addr, URL: "/mid", TotalSent: 50, SendRatio: 1.56, Occurrence: 2, CreatedOn: currentTime.Add(-4 * time.Hour), ExpiresOn: currentTime.Add(time.Hour)},
 	}
 
 	for _, req := range requests {
@@ -1157,7 +1159,7 @@ func TestFilterRequestsBySendRatio(t *testing.T) {
 	}
 
 	// Fetch > 1.45
-	gotRequests, err := adapter.FilterRequests(1.45, 2)
+	gotRequests, err := adapter.FilterRequests(1.45, currentTime.Add(-2*time.Hour))
 	if err != nil {
 		t.Errorf("FilterRequests failed: %v", err)
 	}

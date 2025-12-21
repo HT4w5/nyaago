@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"net/netip"
+	"time"
 )
 
 /*
@@ -27,7 +28,7 @@ type DBAdapter interface {
 
 	GetRequest(addr netip.Addr, url string) (Request, error)
 	ListRequests(addr netip.Addr) ([]Request, error)
-	FilterRequests(minSendRatio float64, maturationThreshold int) ([]Request, error) // Order by SendRatio
+	FilterRequests(minSendRatio float64, createdBefore time.Time) ([]Request, error) // Order by SendRatio
 
 	GetRule(prefix netip.Prefix) (Rule, error)
 	ListRules() ([]Rule, error)

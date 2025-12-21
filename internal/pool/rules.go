@@ -75,13 +75,13 @@ func (p *Pool) FlushExpired() error {
 
 func (p *Pool) BuildRules() error {
 	// Filter for malicious requests
-	requests, err := p.adapter.FilterRequests(p.cfg.Analyzer.SendRatioThreshold, p.cfg.Pool.RequestConfig.MaturationThreshold)
+	currentTime := time.Now()
+	requests, err := p.adapter.FilterRequests(p.cfg.Analyzer.SendRatioThreshold, currentTime.Add(-p.cfg.Analyzer.UpdateInterval.Duration))
 	if err != nil {
 		return fmt.Errorf("failed to filter for requests: %w", err)
 	}
 
 	// Generate and store rules
-	currentTime := time.Now()
 	tx, err := p.adapter.Begin()
 	if err != nil {
 		return fmt.Errorf("failed to start db transaction: %w", err)
