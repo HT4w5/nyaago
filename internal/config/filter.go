@@ -16,11 +16,11 @@ Functions that apply filters on incoming requests.
 */
 
 func (f RequestFilter) Match(request dto.Request) bool {
-	if !f.Prefix.Contains(request.Client) {
+	if f.Prefix.IsValid() && !f.Prefix.Contains(request.Client) {
 		return false
 	}
 
-	if !f.URLRegex.MatchString(request.URL) {
+	if f.URLRegex.IsValid() && !f.URLRegex.MatchString(request.URL) {
 		return false
 	}
 

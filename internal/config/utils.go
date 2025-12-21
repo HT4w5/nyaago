@@ -36,12 +36,17 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 
 type RegexWrapper struct {
 	*regexp.Regexp
+	isValid bool
 }
 
 func (r *RegexWrapper) UnmarshalJSON(data []byte) error {
+	r.isValid = false
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
 		return err
+	}
+	if len(s) == 0 {
+		return nil
 	}
 
 	re, err := regexp.Compile(s)
@@ -50,5 +55,10 @@ func (r *RegexWrapper) UnmarshalJSON(data []byte) error {
 	}
 
 	r.Regexp = re
+	r.isValid = true
 	return nil
+}
+
+func (r *RegexWrapper) IsValid() bool {
+	return r.isValid
 }
