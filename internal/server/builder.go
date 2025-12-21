@@ -33,16 +33,16 @@ func (s *Server) runBuildRules(ctx context.Context) {
 
 func (s *Server) runWriteConfig(ctx context.Context) {
 	// Create formatter
-	formatter, err := aclfmt.MakeFormatter(s.cfg.Fmt.Type, meta.GetMetadataSingleLine())
+	formatter, err := aclfmt.MakeFormatter(s.cfg.Egress.Type, meta.GetMetadataSingleLine())
 	if err != nil {
 		s.logger.Error("failed to create formatter", logging.LoggerKeyError, err)
 	}
 
 	// Open file for write
 	s.logger.Info("writing ACL config")
-	f, err := os.OpenFile(s.cfg.Fmt.Path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0664)
+	f, err := os.OpenFile(s.cfg.Egress.Path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0664)
 	if err != nil {
-		s.logger.Error("failed to open config file", logging.LoggerKeyError, err, "path", s.cfg.Fmt.Path)
+		s.logger.Error("failed to open config file", logging.LoggerKeyError, err, "path", s.cfg.Egress.Path)
 		return
 	}
 
@@ -53,7 +53,7 @@ func (s *Server) runWriteConfig(ctx context.Context) {
 	}
 	err = formatter.Marshal(set, f)
 	if err != nil {
-		s.logger.Error("failed to write config", logging.LoggerKeyError, err, "path", s.cfg.Fmt.Path, "formatter_type", s.cfg.Fmt.Type)
+		s.logger.Error("failed to write config", logging.LoggerKeyError, err, "path", s.cfg.Egress.Path, "formatter_type", s.cfg.Egress.Type)
 		return
 	}
 }

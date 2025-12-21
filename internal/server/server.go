@@ -87,7 +87,7 @@ func GetServer(cfg *config.Config) (*Server, error) {
 	}
 
 	// Create tail
-	s.tail, err = tail.MakeTail(&cfg.Tail, logger)
+	s.tail, err = tail.MakeTail(&cfg.Ingress, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create tail: %w", err)
 	}

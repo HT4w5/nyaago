@@ -20,13 +20,13 @@ const (
 )
 
 type Tail struct {
-	cfg    *config.TailConfig
+	cfg    *config.IngressConfig
 	parser parser.Parser
 	tail   *tailutil.Tail
 	logger *slog.Logger
 }
 
-func MakeTail(cfg *config.TailConfig, logger *slog.Logger) (*Tail, error) {
+func MakeTail(cfg *config.IngressConfig, logger *slog.Logger) (*Tail, error) {
 	t := &Tail{}
 
 	// Setup parser
