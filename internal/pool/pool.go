@@ -66,18 +66,23 @@ func (p *Pool) ProcessRequest(req dto.Request) error {
 	if client.Addr.IsValid() {
 		// Update client attributes
 		client.TotalSent += req.BodySent
-		client.ExpiresOn = currentTime.Add(p.cfg.Pool.ClientConfig.TTL.Duration)
+		client.ExpiresOn = currentTime.Add(p.cfg.Analyzer.TTL.Duration)
 	} else {
 		// Create new
 		client = db.Client{
 			Addr:      req.Client,
 			TotalSent: req.BodySent,
-			CreatedOn: currentTime,
-			ExpiresOn: currentTime.Add(p.cfg.Pool.ClientConfig.TTL.Duration),
+			CreatedOn: req.Time,
+			ExpiresOn: currentTime.Add(p.cfg.Analyzer.TTL.Duration),
 		}
 	}
 
-	err = p.adapter.PutClient(client)
+	tx, err := p.adapter.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start db transaction: %w", err)
+	}
+
+	err = tx.PutClient(client)
 	if err != nil {
 		return fmt.Errorf("failed to put client %s: %w", client.Addr, err)
 	}
@@ -89,10 +94,10 @@ func (p *Pool) ProcessRequest(req dto.Request) error {
 	}
 	// Update resource attributes
 	resource.Size = max(resource.Size, req.BodySent)
-	resource.ExpiresOn = currentTime.Add(p.cfg.Pool.ResourceConfig.TTL.Duration)
+	resource.ExpiresOn = currentTime.Add(p.cfg.Analyzer.TTL.Duration)
 	resource.URL = req.URL
 
-	err = p.adapter.PutResource(resource)
+	err = tx.PutResource(resource)
 	if err != nil {
 		return fmt.Errorf("failed to put resource %s: %w", client.Addr, err)
 	}
@@ -101,7 +106,7 @@ func (p *Pool) ProcessRequest(req dto.Request) error {
 	request, err := p.adapter.GetRequest(req.Client, req.URL)
 	if request.Addr.IsValid() {
 		// Update request attributes
-		request.ExpiresOn = currentTime.Add(p.cfg.Pool.ResourceConfig.TTL.Duration)
+		request.ExpiresOn = currentTime.Add(p.cfg.Analyzer.TTL.Duration)
 		request.TotalSent += req.BodySent
 		request.SendRatio = float64(request.TotalSent*24) / float64(resource.Size) / currentTime.Sub(request.CreatedOn).Hours() // Sent times per day
 		request.Occurrence++
@@ -111,16 +116,21 @@ func (p *Pool) ProcessRequest(req dto.Request) error {
 			Addr:       req.Client,
 			URL:        req.URL,
 			TotalSent:  req.BodySent,
-			SendRatio:  1.,
+			SendRatio:  0.,
 			Occurrence: 1,
-			CreatedOn:  currentTime,
-			ExpiresOn:  currentTime.Add(p.cfg.Pool.RequestConfig.TTL.Duration),
+			CreatedOn:  req.Time,
+			ExpiresOn:  currentTime.Add(p.cfg.Analyzer.TTL.Duration),
 		}
 	}
 
-	err = p.adapter.PutRequest(request)
+	err = tx.PutRequest(request)
 	if err != nil {
 		return fmt.Errorf("failed to put request %s: %w", client.Addr, err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("failed to commit db transaction: %w", err)
 	}
 
 	return nil

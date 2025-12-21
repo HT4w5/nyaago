@@ -45,22 +45,29 @@ func (p *Pool) GetRuleSet() (*netipx.IPSet, error) {
 }
 
 func (p *Pool) FlushExpired() error {
-	var err error
-	err = p.adapter.FlushExpiredClients()
+	tx, err := p.adapter.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start db transaction: %w", err)
+	}
+	err = tx.FlushExpiredClients()
 	if err != nil {
 		return fmt.Errorf("failed to flush expired clients: %w", err)
 	}
-	err = p.adapter.FlushExpiredRequests()
+	err = tx.FlushExpiredRequests()
 	if err != nil {
 		return fmt.Errorf("failed to flush expired requests: %w", err)
 	}
-	err = p.adapter.FlushExpiredResources()
+	err = tx.FlushExpiredResources()
 	if err != nil {
 		return fmt.Errorf("failed to flush expired resources: %w", err)
 	}
-	err = p.adapter.FlushExpiredRules()
+	err = tx.FlushExpiredRules()
 	if err != nil {
 		return fmt.Errorf("failed to flush expired rules: %w", err)
+	}
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("failed to commit db transaction: %w", err)
 	}
 
 	return nil
@@ -68,19 +75,24 @@ func (p *Pool) FlushExpired() error {
 
 func (p *Pool) BuildRules() error {
 	// Filter for malicious requests
-	requests, err := p.adapter.FilterRequests(p.cfg.Pool.SendRatioThreshold, p.cfg.Pool.RequestConfig.MaturationThreshold)
+	requests, err := p.adapter.FilterRequests(p.cfg.Analyzer.SendRatioThreshold, p.cfg.Pool.RequestConfig.MaturationThreshold)
 	if err != nil {
 		return fmt.Errorf("failed to filter for requests: %w", err)
 	}
 
 	// Generate and store rules
 	currentTime := time.Now()
+	tx, err := p.adapter.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start db transaction: %w", err)
+	}
+
 	for _, v := range requests {
 		var prefixLength int
 		if v.Addr.Is4() {
-			prefixLength = p.cfg.Pool.BanPrefixLength.IPv4
+			prefixLength = p.cfg.Analyzer.BanPrefixLength.IPv4
 		} else if v.Addr.Is6() {
-			prefixLength = p.cfg.Pool.BanPrefixLength.IPv6
+			prefixLength = p.cfg.Analyzer.BanPrefixLength.IPv6
 		} else {
 			// Drop invalid
 			continue
@@ -90,13 +102,18 @@ func (p *Pool) BuildRules() error {
 			Prefix:    netip.PrefixFrom(v.Addr, prefixLength),
 			Addr:      v.Addr,
 			URL:       v.URL,
-			ExpiresOn: currentTime.Add(p.cfg.Pool.RuleConfig.TTL.Duration),
+			ExpiresOn: currentTime.Add(p.cfg.Analyzer.TTL.Duration),
 		}
 
-		err = p.adapter.PutRule(r)
+		err = tx.PutRule(r)
 		if err != nil {
 			return fmt.Errorf("failed to put rule: %w", err)
 		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("failed to commit db transaction: %w", err)
 	}
 
 	return nil
