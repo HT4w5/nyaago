@@ -40,6 +40,12 @@ func GetServer(cfg *config.Config) (*Server, error) {
 		return server, nil
 	}
 
+	if cfg.Log.LogLevel == "debug" {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	s := &Server{
 		cfg:    cfg,
 		router: gin.New(),
@@ -66,6 +72,7 @@ func GetServer(cfg *config.Config) (*Server, error) {
 		DefaultLevel:     slog.LevelInfo,
 		ClientErrorLevel: slog.LevelWarn,
 		ServerErrorLevel: slog.LevelError,
+		HandleGinDebug:   true,
 	}))
 	s.router.Use(gin.Recovery())
 	s.setupRoutes()
