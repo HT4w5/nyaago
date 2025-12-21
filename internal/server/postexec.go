@@ -8,13 +8,18 @@ import (
 )
 
 func (s *Server) runPostExec(ctx context.Context) {
-	cmd := exec.CommandContext(ctx, s.cfg.Egress.PostExec.Cmd, s.cfg.Egress.PostExec.Args...)
-	if s.cfg.Egress.PostExec.Cwd != "" {
-		cmd.Dir = s.cfg.Egress.PostExec.Cwd
-	}
+	total := len(s.cfg.Egress.PostExec)
+	for i, v := range s.cfg.Egress.PostExec {
+		s.logger.Info("running postexec", "total", total, "current", i, "tag", v.Tag)
 
-	err := cmd.Run()
-	if err != nil {
-		s.logger.Error("failed to run postexec", logging.LoggerKeyError, err)
+		cmd := exec.CommandContext(ctx, v.Cmd, v.Args...)
+		if v.Cwd != "" {
+			cmd.Dir = v.Cwd
+		}
+
+		err := cmd.Run()
+		if err != nil {
+			s.logger.Error("failed to run postexec", "tag", v.Tag, logging.LoggerKeyError, err)
+		}
 	}
 }
