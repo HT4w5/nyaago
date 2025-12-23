@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/HT4w5/nyaago/internal/config"
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -19,6 +20,12 @@ var logger *slog.Logger
 func GetLogger(cfg *config.LogConfig) (*slog.Logger, error) {
 	if logger != nil {
 		return logger, nil
+	}
+
+	if cfg.LogLevel == "debug" {
+		gin.SetMode(gin.DebugMode)
+	} else {
+		gin.SetMode(gin.ReleaseMode)
 	}
 
 	var writer io.Writer

@@ -6,16 +6,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+/*
+ * API handler functions
+ */
+
 const (
-	infoKey  = "msg"
 	errorKey = "err"
+	infoKey  = "msg"
 )
 
-func (s *Server) setupRoutes() {
-	s.router.GET("/ping", s.ping)
-}
-
-func (s *Server) ping(c *gin.Context) {
+func (s *Server) HandlePing(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		infoKey: "pong",
 	})
