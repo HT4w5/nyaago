@@ -53,7 +53,7 @@ func GetServer(cfg *config.Config) (*Server, error) {
 
 	var err error
 	// Create logger
-	logger, err := logging.SetupLogger(&cfg.Log)
+	logger, err := logging.GetLogger(&cfg.Log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create logger: %w", err)
 	}

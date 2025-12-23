@@ -14,9 +14,14 @@ const (
 	SlogKeyError  = "error"
 )
 
-func SetupLogger(cfg *config.LogConfig) (*slog.Logger, error) {
-	var writer io.Writer
+var logger *slog.Logger
 
+func GetLogger(cfg *config.LogConfig) (*slog.Logger, error) {
+	if logger != nil {
+		return logger, nil
+	}
+
+	var writer io.Writer
 	switch cfg.Access {
 	case "none":
 		return slog.New(slog.DiscardHandler), nil
@@ -61,5 +66,6 @@ func SetupLogger(cfg *config.LogConfig) (*slog.Logger, error) {
 		})
 	}
 
-	return slog.New(handler), nil
+	logger = slog.New(handler)
+	return logger, nil
 }
