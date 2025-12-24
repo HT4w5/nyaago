@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -49,6 +50,14 @@ const (
 	sqliteRulesColExpiresOn = "expires_on"
 )
 
+/* DSN options */
+
+const (
+	sqliteJournalMode = "?_journal_mode=WAL"
+	sqliteBusyTimeout = "?_busy_timeout=5000"
+	sqliteSynchronous = "?_synchronous=NORMAL"
+)
+
 /* SqliteAdapter implements DBAdapter */
 
 type SqliteAdapter struct {
@@ -56,7 +65,14 @@ type SqliteAdapter struct {
 }
 
 func (a *SqliteAdapter) Begin() (DBTx, error) {
-	tx, err := a.db.Begin()
+	tx, err := a.db.BeginTx(
+		context.Background(),
+		// Mitigate "Upgrade" trap
+		&sql.TxOptions{
+			Isolation: sql.LevelDefault,
+			ReadOnly:  false,
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -87,8 +103,9 @@ func (t *SqliteTx) Rollback() error {
 	return nil
 }
 
-func makeSqliteAdapter(dbFile string) (*SqliteAdapter, error) {
-	db, err := sql.Open("sqlite3", dbFile)
+func makeSqliteAdapter(dsn string) (*SqliteAdapter, error) {
+	dsn = dsn + sqliteJournalMode + sqliteBusyTimeout + sqliteSynchronous
+	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open sqlite db: %w", err)
 	}

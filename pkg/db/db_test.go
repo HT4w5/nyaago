@@ -148,7 +148,7 @@ func testExpirationFlushing(t *testing.T, adapter DBAdapter) {
 }
 
 func TestSqliteImplementation(t *testing.T) {
-	db, err := MakeDBAdapter("sqlite", ":memory:")
+	db, err := MakeDBAdapter("sqlite", "file::memory:")
 	if err != nil {
 		t.Skip("Sqlite adapter not implemented or available")
 		return
