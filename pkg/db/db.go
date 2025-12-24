@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/netip"
 	"time"
+
+	"github.com/HT4w5/nyaago/pkg/dto"
 )
 
 /*
@@ -22,16 +24,12 @@ type DBAdapter interface {
 	Info() string
 
 	GetResource(url string) (Resource, error)
-
 	GetClient(addr netip.Addr) (Client, error)
-	ListClients() ([]Client, error)
-
 	GetRequest(addr netip.Addr, url string) (Request, error)
-	ListRequests(addr netip.Addr) ([]Request, error)
-	FilterRequests(minSendRatio float64, createdBefore time.Time) ([]Request, error) // Order by SendRatio
+	FilterRequests(minSendRatio float64, createdBefore time.Time) ([]Request, error) // Filter by SendRatio
 
-	GetRule(prefix netip.Prefix) (Rule, error)
-	ListRules() ([]Rule, error)
+	GetRule(prefix netip.Prefix) (dto.Rule, error)
+	ListRules() ([]dto.Rule, error)
 }
 
 type DBTx interface {
@@ -50,7 +48,7 @@ type DBTx interface {
 	DelRequest(addr netip.Addr, url string) error
 	FlushExpiredRequests() error
 
-	PutRule(rule Rule) error
+	PutRule(rule dto.Rule) error
 	DelRule(prefix netip.Prefix) error
 	FlushExpiredRules() error
 }

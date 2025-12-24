@@ -7,6 +7,7 @@ import (
 	"net/netip"
 	"time"
 
+	"github.com/HT4w5/nyaago/pkg/dto"
 	"github.com/ncruces/go-sqlite3"
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
@@ -35,13 +36,12 @@ const (
 	sqliteResourcesColSize      = "size"
 	sqliteResourcesColExpiresOn = "expires_on"
 
-	sqliteRequestsColAddr       = "addr"
-	sqliteRequestsColURL        = "url"
-	sqliteRequestsColTotalSent  = "total_sent"
-	sqliteRequestsColSendRatio  = "sent_ratio"
-	sqliteRequestsColOccurrence = "occurrence"
-	sqliteRequestsColCreatedOn  = "created_on"
-	sqliteRequestsColExpiresOn  = "expires_on"
+	sqliteRequestsColAddr      = "addr"
+	sqliteRequestsColURL       = "url"
+	sqliteRequestsColTotalSent = "total_sent"
+	sqliteRequestsColSendRatio = "sent_ratio"
+	sqliteRequestsColCreatedOn = "created_on"
+	sqliteRequestsColExpiresOn = "expires_on"
 
 	sqliteRulesColPrefix    = "prefix"
 	sqliteRulesColAddr      = "addr"
@@ -149,7 +149,7 @@ func (a *SqliteAdapter) initializeSchema() error {
 		`CREATE TABLE IF NOT EXISTS %s (
 	%s TEXT NOT NULL,
 	%s TEXT NOT NULL,
-	%s INTEGER NOT NULL, %s REAL NOT NULL, %s INTEGER NOT NULL, %s INTEGER NOT NULL, %s INTEGER NOT NULL,
+	%s INTEGER NOT NULL, %s REAL NOT NULL, %s INTEGER NOT NULL, %s INTEGER NOT NULL,
 	UNIQUE (%s, %s),
 	CONSTRAINT requests_clients_FK FOREIGN KEY (%s) REFERENCES %s(%s) ON DELETE CASCADE,
 	CONSTRAINT requests_resources_FK FOREIGN KEY (%s) REFERENCES %s(%s) ON DELETE RESTRICT
@@ -159,7 +159,6 @@ func (a *SqliteAdapter) initializeSchema() error {
 		sqliteRequestsColURL,
 		sqliteRequestsColTotalSent,
 		sqliteRequestsColSendRatio,
-		sqliteRequestsColOccurrence,
 		sqliteRequestsColCreatedOn,
 		sqliteRequestsColExpiresOn,
 		sqliteRequestsColAddr,
@@ -406,12 +405,11 @@ func (t *SqliteTx) FlushExpiredClients() error {
 
 func (a *SqliteAdapter) GetRequest(addr netip.Addr, url string) (Request, error) {
 	var req Request
-	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s, %s FROM %s WHERE %s = ? AND %s = ?",
+	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s FROM %s WHERE %s = ? AND %s = ?",
 		sqliteRequestsColAddr,
 		sqliteRequestsColURL,
 		sqliteRequestsColTotalSent,
 		sqliteRequestsColSendRatio,
-		sqliteRequestsColOccurrence,
 		sqliteRequestsColCreatedOn,
 		sqliteRequestsColExpiresOn,
 		sqliteTableRequests,
@@ -420,7 +418,7 @@ func (a *SqliteAdapter) GetRequest(addr netip.Addr, url string) (Request, error)
 	)
 	var createdOn, expiresOn int64
 	var addrStr string
-	err := a.db.QueryRow(query, addr.String(), url).Scan(&addrStr, &req.URL, &req.TotalSent, &req.SendRatio, &req.Occurrence, &createdOn, &expiresOn)
+	err := a.db.QueryRow(query, addr.String(), url).Scan(&addrStr, &req.URL, &req.TotalSent, &req.SendRatio, &createdOn, &expiresOn)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return Request{}, nil // Request not found
@@ -437,13 +435,12 @@ func (a *SqliteAdapter) GetRequest(addr netip.Addr, url string) (Request, error)
 }
 
 func (t *SqliteTx) PutRequest(req Request) error {
-	query := fmt.Sprintf("INSERT INTO %s (%s, %s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(%s, %s) DO UPDATE SET %s = excluded.%s, %s = excluded.%s, %s = excluded.%s, %s = excluded.%s,  %s = excluded.%s",
+	query := fmt.Sprintf("INSERT INTO %s (%s, %s, %s, %s, %s, %s) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(%s, %s) DO UPDATE SET %s = excluded.%s, %s = excluded.%s, %s = excluded.%s, %s = excluded.%s",
 		sqliteTableRequests,
 		sqliteRequestsColAddr,
 		sqliteRequestsColURL,
 		sqliteRequestsColTotalSent,
 		sqliteRequestsColSendRatio,
-		sqliteRequestsColOccurrence,
 		sqliteRequestsColCreatedOn,
 		sqliteRequestsColExpiresOn,
 		sqliteRequestsColAddr,
@@ -452,14 +449,12 @@ func (t *SqliteTx) PutRequest(req Request) error {
 		sqliteRequestsColTotalSent,
 		sqliteRequestsColSendRatio,
 		sqliteRequestsColSendRatio,
-		sqliteRequestsColOccurrence,
-		sqliteRequestsColOccurrence,
 		sqliteRequestsColCreatedOn,
 		sqliteRequestsColCreatedOn,
 		sqliteRequestsColExpiresOn,
 		sqliteRequestsColExpiresOn,
 	)
-	_, err := t.tx.Exec(query, req.Addr.String(), req.URL, req.TotalSent, req.SendRatio, req.Occurrence, req.CreatedOn.Unix(), req.ExpiresOn.Unix())
+	_, err := t.tx.Exec(query, req.Addr.String(), req.URL, req.TotalSent, req.SendRatio, req.CreatedOn.Unix(), req.ExpiresOn.Unix())
 	if err != nil {
 		return fmt.Errorf("failed to put request: %w", err)
 	}
@@ -478,12 +473,11 @@ func (t *SqliteTx) DelRequest(addr netip.Addr, url string) error {
 
 func (a *SqliteAdapter) ListRequests(addr netip.Addr) ([]Request, error) {
 	var requests []Request
-	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s, %s FROM %s WHERE %s = ?",
+	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s FROM %s WHERE %s = ?",
 		sqliteRequestsColAddr,
 		sqliteRequestsColURL,
 		sqliteRequestsColTotalSent,
 		sqliteRequestsColSendRatio,
-		sqliteRequestsColOccurrence,
 		sqliteRequestsColCreatedOn,
 		sqliteRequestsColExpiresOn,
 		sqliteTableRequests,
@@ -499,7 +493,7 @@ func (a *SqliteAdapter) ListRequests(addr netip.Addr) ([]Request, error) {
 		var req Request
 		var createdOn, expiresOn int64
 		var addrStr string
-		err := rows.Scan(&addrStr, &req.URL, &req.TotalSent, &req.SendRatio, &req.Occurrence, &createdOn, &expiresOn)
+		err := rows.Scan(&addrStr, &req.URL, &req.TotalSent, &req.SendRatio, &createdOn, &expiresOn)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan request: %w", err)
 		}
@@ -521,12 +515,11 @@ func (a *SqliteAdapter) ListRequests(addr netip.Addr) ([]Request, error) {
 
 func (a *SqliteAdapter) FilterRequests(minSendRatio float64, createdBefore time.Time) ([]Request, error) {
 	var requests []Request
-	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s, %s FROM %s WHERE %s >= ? AND %s < ?",
+	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s FROM %s WHERE %s >= ? AND %s < ?",
 		sqliteRequestsColAddr,
 		sqliteRequestsColURL,
 		sqliteRequestsColTotalSent,
 		sqliteRequestsColSendRatio,
-		sqliteRequestsColOccurrence,
 		sqliteRequestsColCreatedOn,
 		sqliteRequestsColExpiresOn,
 		sqliteTableRequests,
@@ -543,7 +536,7 @@ func (a *SqliteAdapter) FilterRequests(minSendRatio float64, createdBefore time.
 		var req Request
 		var createdOn, expiresOn int64
 		var addrStr string
-		err := rows.Scan(&addrStr, &req.URL, &req.TotalSent, &req.SendRatio, &req.Occurrence, &createdOn, &expiresOn)
+		err := rows.Scan(&addrStr, &req.URL, &req.TotalSent, &req.SendRatio, &createdOn, &expiresOn)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan request: %w", err)
 		}
@@ -579,8 +572,8 @@ func (t *SqliteTx) FlushExpiredRequests() error {
 
 /* Rules */
 
-func (a *SqliteAdapter) GetRule(prefix netip.Prefix) (Rule, error) {
-	var rule Rule
+func (a *SqliteAdapter) GetRule(prefix netip.Prefix) (dto.Rule, error) {
+	var rule dto.Rule
 	query := fmt.Sprintf("SELECT %s, %s, %s, %s FROM %s WHERE %s = ?",
 		sqliteRulesColPrefix,
 		sqliteRulesColAddr,
@@ -594,24 +587,24 @@ func (a *SqliteAdapter) GetRule(prefix netip.Prefix) (Rule, error) {
 	err := a.db.QueryRow(query, prefix.Masked().String()).Scan(&prefixStr, &addrStr, &rule.URL, &expiresOn)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return Rule{}, nil // Rule not found
+			return dto.Rule{}, nil // Rule not found
 		}
-		return Rule{}, fmt.Errorf("failed to get rule: %w", err)
+		return dto.Rule{}, fmt.Errorf("failed to get rule: %w", err)
 	}
 	rule.ExpiresOn = time.Unix(expiresOn, 0)
 	rule.Prefix, err = netip.ParsePrefix(prefixStr)
 	if err != nil {
-		return Rule{}, fmt.Errorf("failed to parse rule prefix: %w", err)
+		return dto.Rule{}, fmt.Errorf("failed to parse rule prefix: %w", err)
 	}
 	rule.Prefix = rule.Prefix.Masked()
 	rule.Addr, err = netip.ParseAddr(addrStr)
 	if err != nil {
-		return Rule{}, fmt.Errorf("failed to parse rule addr: %w", err)
+		return dto.Rule{}, fmt.Errorf("failed to parse rule addr: %w", err)
 	}
 	return rule, nil
 }
 
-func (t *SqliteTx) PutRule(rule Rule) error {
+func (t *SqliteTx) PutRule(rule dto.Rule) error {
 	query := fmt.Sprintf("INSERT INTO %s (%s, %s, %s, %s) VALUES (?, ?, ?, ?) ON CONFLICT(%s) DO UPDATE SET %s = excluded.%s, %s = excluded.%s, %s = excluded.%s, %s = excluded.%s",
 		sqliteTableRules,
 		sqliteRulesColPrefix,
@@ -644,8 +637,8 @@ func (t *SqliteTx) DelRule(prefix netip.Prefix) error {
 	return nil
 }
 
-func (a *SqliteAdapter) ListRules() ([]Rule, error) {
-	var rules []Rule
+func (a *SqliteAdapter) ListRules() ([]dto.Rule, error) {
+	var rules []dto.Rule
 	query := fmt.Sprintf("SELECT %s, %s, %s, %s FROM %s",
 		sqliteRulesColPrefix,
 		sqliteRulesColAddr,
@@ -660,7 +653,7 @@ func (a *SqliteAdapter) ListRules() ([]Rule, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var rule Rule
+		var rule dto.Rule
 		var expiresOn int64
 		var prefixStr, addrStr string
 		err := rows.Scan(&prefixStr, &addrStr, &rule.URL, &expiresOn)

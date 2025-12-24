@@ -1,6 +1,13 @@
 package dto
 
+import (
+	"net/netip"
+	"time"
+)
+
 type Client struct {
+	Addr      netip.Addr
 	TotalSent int64
-	Resources map[string]Resource
+	CreatedOn time.Time
+	ExpiresOn time.Time
 }
