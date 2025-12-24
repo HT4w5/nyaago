@@ -24,6 +24,7 @@ func makeTailIngress(cfg *config.IngressConfig, p parser.Parser, logger *slog.Lo
 	i := &TailIngress{
 		parser: p,
 		logger: logger,
+		cfg:    cfg,
 	}
 
 	// Setup tail
