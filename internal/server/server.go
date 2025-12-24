@@ -75,6 +75,7 @@ func GetServer(cfg *config.Config) (*Server, error) {
 
 func (s *Server) Start(ctx context.Context, cancel context.CancelFunc) {
 	s.logger.Info("starting")
+	s.logger.Info("db driver info", "db_info", s.db.Info())
 	// Cron
 	s.cron.Start()
 
