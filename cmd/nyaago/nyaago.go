@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag" // Added
 	"fmt"
 	"os"
 	"os/signal"
@@ -22,38 +23,41 @@ const (
 )
 
 func main() {
-	// Print Metadata
-	fmt.Println(meta.GetMetadataMultiline())
+	var cfgPath string
+	flag.StringVar(&cfgPath, "config", "config.json", "path to the configuration file")
+	flag.StringVar(&cfgPath, "c", "config.json", "path to the configuration file (shorthand)")
 
-	// Load config
-	cfgPath := "config.json"
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "%s", meta.GetMetadataMultiline())
+		fmt.Fprintf(os.Stderr, "Usage:\n")
+		flag.PrintDefaults()
+	}
+
+	flag.Parse()
+
+	fmt.Print(meta.GetMetadataMultiline())
+
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
-		fmt.Printf("Failed to load config %s: %v", cfgPath, err)
+		fmt.Printf("Failed to load config %s: %v\n", cfgPath, err)
 		os.Exit(exitConfigError)
 	}
 
-	// Create server
 	srv, err := server.GetServer(cfg)
 	if err != nil {
-		fmt.Printf("Failed to create server: %v", err)
+		fmt.Printf("Failed to create server: %v\n", err)
 		os.Exit(exitServerError)
 	}
 
-	// Create API
 	api, err := api.MakeAPI(cfg, srv)
 	if err != nil {
-		fmt.Printf("Failed to create api: %v", err)
+		fmt.Printf("Failed to create api: %v\n", err)
 		os.Exit(exitAPIError)
 	}
 
-	// Listen for interrupt
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 
-	// Start server
 	srv.Start(ctx, stop)
-
-	// Start api
 	api.Start()
 
 	<-ctx.Done()

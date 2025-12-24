@@ -2,11 +2,13 @@ package meta
 
 import "fmt"
 
-const (
+var (
 	Name       = "Nyaago"
-	BuildDate  = ""
-	CommitHash = ""
-	Version    = "v2025.12-alpha"
+	BuildDate  string
+	CommitHash string
+	Version    string
+	Platform   string
+	GoVersion  string
 )
 
 type buildInfo struct{}
@@ -14,9 +16,11 @@ type buildInfo struct{}
 func (b buildInfo) Lines() []string {
 	return []string{
 		fmt.Sprintf(
-			"%s %s",
+			"%s %s (%s %s)",
 			Name,
 			Version,
+			GoVersion,
+			Platform,
 		),
 		fmt.Sprintf(
 			"Build date: %s",

@@ -28,8 +28,8 @@ type fieldConfig struct {
 func GetMetadataMultiline() string {
 	fields := []field{
 		getBanner(),
-		getMotd(),
 		getBuildInfo(),
+		getMotd(),
 	}
 
 	// Get separator length
