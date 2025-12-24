@@ -36,6 +36,7 @@ func MakeAPI(cfg *config.Config, s *server.Server) (*API, error) {
 	api := &API{
 		engine: gin.New(),
 		logger: logger.With(logging.SlogKeyModule, slogModuleName).WithGroup(slogGroupName),
+		srv:    s,
 	}
 
 	// Setup gin router

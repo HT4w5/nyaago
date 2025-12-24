@@ -20,7 +20,7 @@ func (s *Server) runIngressWorker(ctx context.Context, cancel context.CancelFunc
 		case <-ctx.Done():
 			return
 		case req := <-requestChan:
-			err := s.pool.ProcessRequest(req)
+			err := s.processRequest(req)
 			if err != nil {
 				s.logger.Error("failed to process request", logging.SlogKeyError, err)
 			}

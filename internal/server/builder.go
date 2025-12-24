@@ -18,14 +18,14 @@ func (s *Server) runMainCronTask(ctx context.Context) {
 func (s *Server) runBuildRules(ctx context.Context) {
 	// Flush expired
 	s.logger.Info("flushing expired pool objects")
-	err := s.pool.FlushExpired()
+	err := s.flushExpired()
 	if err != nil {
 		s.logger.Error("failed to flush expired pool objects", logging.SlogKeyError, err)
 	}
 
 	// Build rules
 	s.logger.Info("building new rules")
-	err = s.pool.BuildRules()
+	err = s.buildRules()
 	if err != nil {
 		s.logger.Error("failed to build new rules", logging.SlogKeyError, err)
 	}
@@ -46,7 +46,7 @@ func (s *Server) runWriteConfig(ctx context.Context) {
 		return
 	}
 
-	set, err := s.pool.GetRuleSet()
+	set, err := s.getRuleSet()
 	if err != nil {
 		s.logger.Error("failed to get ruleset", logging.SlogKeyError, err)
 		return

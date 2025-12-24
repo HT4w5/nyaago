@@ -8,7 +8,7 @@ import (
 	"github.com/HT4w5/nyaago/internal/config"
 	"github.com/HT4w5/nyaago/internal/ingress"
 	"github.com/HT4w5/nyaago/internal/logging"
-	"github.com/HT4w5/nyaago/internal/pool"
+	"github.com/HT4w5/nyaago/pkg/db"
 	"github.com/go-co-op/gocron/v2"
 )
 
@@ -22,7 +22,7 @@ const (
 
 type Server struct {
 	cfg    *config.Config
-	pool   *pool.Pool
+	db     db.DBAdapter
 	ia     ingress.IngressAdapter
 	cron   gocron.Scheduler
 	logger *slog.Logger
@@ -46,6 +46,12 @@ func GetServer(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to get logger: %w", err)
 	}
 
+	// Make DBAdapter
+	s.db, err = db.MakeDBAdapter(cfg.DB.Type, cfg.DB.Access)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get DBAdapter: %w", err)
+	}
+
 	// Create cron scheduler
 	s.cron, err = gocron.NewScheduler(
 		gocron.WithLogger(logger.With(logging.SlogKeyModule, slogModuleNameCron).WithGroup(slogGroupNameCron)),
@@ -54,12 +60,6 @@ func GetServer(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to create cron scheduler: %w", err)
 	}
 	s.setupCronJobs()
-
-	// Create pool
-	s.pool, err = pool.GetPool(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create pool: %w", err)
-	}
 
 	// Create ingress adapter
 	s.ia, err = ingress.MakeIngressAdapter(&cfg.Ingress, logger)
