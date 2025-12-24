@@ -513,49 +513,6 @@ func (a *SqliteAdapter) ListRequests(createdBefore time.Time) ([]Request, error)
 	return requests, nil
 }
 
-func (a *SqliteAdapter) FilterRequests(minSendRatio float64, createdBefore time.Time) ([]Request, error) {
-	var requests []Request
-	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s FROM %s WHERE %s >= ? AND %s < ?",
-		sqliteRequestsColAddr,
-		sqliteRequestsColURL,
-		sqliteRequestsColTotalSent,
-		sqliteRequestsColSendRatio,
-		sqliteRequestsColCreatedOn,
-		sqliteRequestsColExpiresOn,
-		sqliteTableRequests,
-		sqliteRequestsColSendRatio,
-		sqliteClientsColCreatedOn,
-	)
-	rows, err := a.db.Query(query, minSendRatio, createdBefore.Unix())
-	if err != nil {
-		return nil, fmt.Errorf("failed to list requests: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var req Request
-		var createdOn, expiresOn int64
-		var addrStr string
-		err := rows.Scan(&addrStr, &req.URL, &req.TotalSent, &req.SendRatio, &createdOn, &expiresOn)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan request: %w", err)
-		}
-		req.Addr, err = netip.ParseAddr(addrStr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse client addr: %w", err)
-		}
-		req.CreatedOn = time.Unix(createdOn, 0)
-		req.ExpiresOn = time.Unix(expiresOn, 0)
-		requests = append(requests, req)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating over rows: %w", err)
-	}
-
-	return requests, nil
-}
-
 func (t *SqliteTx) FlushExpiredRequests() error {
 	query := fmt.Sprintf(
 		"DELETE FROM %s WHERE %s < ?;",
