@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 
-	"github.com/HT4w5/nyaago/internal/logging"
 	"github.com/HT4w5/nyaago/pkg/dto"
 )
 
@@ -20,10 +19,7 @@ func (s *Server) runIngressWorker(ctx context.Context, cancel context.CancelFunc
 		case <-ctx.Done():
 			return
 		case req := <-requestChan:
-			err := s.processRequest(req)
-			if err != nil {
-				s.logger.Error("failed to process request", logging.SlogKeyError, err)
-			}
+			s.processRequest(req)
 		}
 	}
 }

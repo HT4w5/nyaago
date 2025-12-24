@@ -5,12 +5,14 @@ import (
 	"net/netip"
 	"time"
 
+	"github.com/HT4w5/nyaago/internal/logging"
 	"github.com/HT4w5/nyaago/pkg/db"
 	"github.com/HT4w5/nyaago/pkg/dto"
 	"go4.org/netipx"
 )
 
-func (s *Server) processRequest(req dto.Request) error {
+func (s *Server) processRequest(req dto.Request) {
+	s.logger.Debug("processing request", "request", req)
 	// -- Apply filters --
 	// Apply include first, then exclude
 	include := false
@@ -21,12 +23,12 @@ func (s *Server) processRequest(req dto.Request) error {
 		}
 	}
 	if !include {
-		return nil
+		return
 	}
 
 	for _, v := range s.cfg.Analyzer.Exclude {
 		if v.Match(req) {
-			return nil
+			return
 		}
 	}
 
@@ -35,7 +37,8 @@ func (s *Server) processRequest(req dto.Request) error {
 	// -- Process client --
 	client, err := s.db.GetClient(req.Client)
 	if err != nil {
-		return fmt.Errorf("failed to get client %s: %w", req.Client, err)
+		s.logger.Error("failed to get client", logging.SlogKeyError, err, "addr", req.Client)
+		return
 	}
 	if client.Addr.IsValid() {
 		// Update client attributes
@@ -53,18 +56,28 @@ func (s *Server) processRequest(req dto.Request) error {
 
 	tx, err := s.db.Begin()
 	if err != nil {
-		return fmt.Errorf("failed to start db transaction: %w", err)
+		s.logger.Error("failed to start db transaction", logging.SlogKeyError, err)
+		return
 	}
+
+	defer func() {
+		err := tx.Commit()
+		if err != nil {
+			s.logger.Error("failed to commit db transaction", logging.SlogKeyError, err)
+		}
+	}()
 
 	err = tx.PutClient(client)
 	if err != nil {
-		return fmt.Errorf("failed to put client %s: %w", client.Addr, err)
+		s.logger.Error("failed to put client", logging.SlogKeyError, err, "client", client)
+		return
 	}
 
 	// -- Process resource --
 	resource, err := s.db.GetResource(req.URL)
 	if err != nil {
-		return fmt.Errorf("failed to get resource %s: %w", req.URL, err)
+		s.logger.Error("failed to get resource", logging.SlogKeyError, err, "url", req.URL)
+		return
 	}
 	// Update resource attributes
 	resource.Size = max(resource.Size, req.BodySent)
@@ -73,7 +86,8 @@ func (s *Server) processRequest(req dto.Request) error {
 
 	err = tx.PutResource(resource)
 	if err != nil {
-		return fmt.Errorf("failed to put resource %s: %w", client.Addr, err)
+		s.logger.Error("failed to put resource", logging.SlogKeyError, err, "resource", resource)
+		return
 	}
 
 	// -- Process request --
@@ -82,7 +96,7 @@ func (s *Server) processRequest(req dto.Request) error {
 		// Update request attributes
 		request.ExpiresOn = currentTime.Add(s.cfg.Analyzer.TTL.Duration)
 		request.TotalSent += req.BodySent
-		request.SendRatio = float64(request.TotalSent*24) / float64(resource.Size) / currentTime.Sub(request.CreatedOn).Hours() // Sent times per day
+		// request.SendRatio = float64(request.TotalSent*24) / float64(resource.Size) / currentTime.Sub(request.CreatedOn).Hours() // Sent times per day
 	} else {
 		// Create new
 		request = db.Request{
@@ -97,15 +111,9 @@ func (s *Server) processRequest(req dto.Request) error {
 
 	err = tx.PutRequest(request)
 	if err != nil {
-		return fmt.Errorf("failed to put request %s: %w", client.Addr, err)
+		s.logger.Error("failed to put request", logging.SlogKeyError, err, "request", request)
+		return
 	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("failed to commit db transaction: %w", err)
-	}
-
-	return nil
 }
 
 func (s *Server) getRuleSet() (*netipx.IPSet, error) {
@@ -122,50 +130,92 @@ func (s *Server) getRuleSet() (*netipx.IPSet, error) {
 	return b.IPSet()
 }
 
-func (s *Server) flushExpired() error {
+func (s *Server) flushExpired() {
+	s.logger.Info("flushing expired pool objects")
 	tx, err := s.db.Begin()
 	if err != nil {
-		return fmt.Errorf("failed to start db transaction: %w", err)
+		s.logger.Error("failed to start db transaction", logging.SlogKeyError, err)
+		return
 	}
+
+	defer func() {
+		err := tx.Commit()
+		if err != nil {
+			s.logger.Error("failed to commit db transaction", logging.SlogKeyError, err)
+		}
+	}()
+
 	err = tx.FlushExpiredClients()
 	if err != nil {
-		return fmt.Errorf("failed to flush expired clients: %w", err)
+		s.logger.Error("failed to flush expired clients", logging.SlogKeyError, err)
 	}
 	err = tx.FlushExpiredRequests()
 	if err != nil {
-		return fmt.Errorf("failed to flush expired requests: %w", err)
+		s.logger.Error("failed to flush expired requests", logging.SlogKeyError, err)
 	}
 	err = tx.FlushExpiredResources()
 	if err != nil {
-		return fmt.Errorf("failed to flush expired resources: %w", err)
+		s.logger.Error("failed to flush expired resources", logging.SlogKeyError, err)
 	}
 	err = tx.FlushExpiredRules()
 	if err != nil {
-		return fmt.Errorf("failed to flush expired rules: %w", err)
+		s.logger.Error("failed to flush expired rules", logging.SlogKeyError, err)
 	}
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("failed to commit db transaction: %w", err)
-	}
-
-	return nil
 }
 
-func (s *Server) buildRules() error {
-	// Filter for malicious requests
+func (s *Server) computeRules() {
+	s.logger.Info("computing new rules")
+	// Filter for mature requests (older than one update interval)
 	currentTime := time.Now()
-	requests, err := s.db.FilterRequests(s.cfg.Analyzer.SendRatioThreshold, currentTime.Add(-s.cfg.Analyzer.UpdateInterval.Duration))
+	requests, err := s.db.ListRequests(currentTime.Add(-s.cfg.Analyzer.UpdateInterval.Duration))
 	if err != nil {
-		return fmt.Errorf("failed to filter for requests: %w", err)
+		s.logger.Error("failed to list requests", logging.SlogKeyError, err)
+		return
 	}
 
-	// Generate and store rules
+	// Recompute SendRatio for each request
+	cache := makeSizeCache(s.db)
+
 	tx, err := s.db.Begin()
 	if err != nil {
-		return fmt.Errorf("failed to start db transaction: %w", err)
+		s.logger.Error("failed to start db transaction", logging.SlogKeyError, err)
+		return
 	}
 
+	defer func() {
+		err := tx.Commit()
+		if err != nil {
+			s.logger.Error("failed to commit db transaction", logging.SlogKeyError, err)
+		}
+	}()
+
+	candidates := make([]db.Request, 0, len(requests))
+
 	for _, v := range requests {
+		size, err := cache.GetSize(v.URL)
+		if err != nil {
+			s.logger.Error("failed to get resource size", logging.SlogKeyError, err)
+			continue
+		}
+		if size <= 0 {
+			s.logger.Warn("resource not found")
+			continue
+		}
+
+		v.SendRatio = float64(v.TotalSent*24) / float64(size) / currentTime.Sub(v.CreatedOn).Hours() // Sent times per day
+
+		if v.SendRatio >= s.cfg.Analyzer.SendRatioThreshold {
+			candidates = append(candidates, v)
+		}
+
+		err = tx.PutRequest(v)
+		if err != nil {
+			s.logger.Error("failed to put request", logging.SlogKeyError, err)
+		}
+	}
+
+	// Compute and store rules
+	for _, v := range candidates {
 		var prefixLength int
 		if v.Addr.Is4() {
 			prefixLength = s.cfg.Analyzer.BanPrefixLength.IPv4
@@ -173,6 +223,7 @@ func (s *Server) buildRules() error {
 			prefixLength = s.cfg.Analyzer.BanPrefixLength.IPv6
 		} else {
 			// Drop invalid
+			s.logger.Warn("dropped request with invalid addr", "addr", v.Addr)
 			continue
 		}
 
@@ -185,14 +236,7 @@ func (s *Server) buildRules() error {
 
 		err = tx.PutRule(r)
 		if err != nil {
-			return fmt.Errorf("failed to put rule: %w", err)
+			s.logger.Error("failed to put rule", logging.SlogKeyError, err)
 		}
 	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("failed to commit db transaction: %w", err)
-	}
-
-	return nil
 }

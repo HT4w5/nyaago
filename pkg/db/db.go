@@ -26,6 +26,7 @@ type DBAdapter interface {
 	GetResource(url string) (Resource, error)
 	GetClient(addr netip.Addr) (Client, error)
 	GetRequest(addr netip.Addr, url string) (Request, error)
+	ListRequests(createdBefore time.Time) ([]Request, error)
 	FilterRequests(minSendRatio float64, createdBefore time.Time) ([]Request, error) // Filter by SendRatio
 
 	GetRule(prefix netip.Prefix) (dto.Rule, error)

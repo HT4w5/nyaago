@@ -7,7 +7,7 @@ import (
 	"github.com/HT4w5/nyaago/internal/logging"
 )
 
-func (s *Server) runPostExec(ctx context.Context) {
+func (s *Server) postExec(ctx context.Context) {
 	total := len(s.cfg.Egress.PostExec)
 	for i, v := range s.cfg.Egress.PostExec {
 		s.logger.Info("running postexec", "total", total, "current", i, "tag", v.Tag)

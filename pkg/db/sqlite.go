@@ -39,7 +39,7 @@ const (
 	sqliteRequestsColAddr      = "addr"
 	sqliteRequestsColURL       = "url"
 	sqliteRequestsColTotalSent = "total_sent"
-	sqliteRequestsColSendRatio = "sent_ratio"
+	sqliteRequestsColSendRatio = "send_ratio"
 	sqliteRequestsColCreatedOn = "created_on"
 	sqliteRequestsColExpiresOn = "expires_on"
 
@@ -471,9 +471,9 @@ func (t *SqliteTx) DelRequest(addr netip.Addr, url string) error {
 	return nil
 }
 
-func (a *SqliteAdapter) ListRequests(addr netip.Addr) ([]Request, error) {
+func (a *SqliteAdapter) ListRequests(createdBefore time.Time) ([]Request, error) {
 	var requests []Request
-	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s FROM %s WHERE %s = ?",
+	query := fmt.Sprintf("SELECT %s, %s, %s, %s, %s, %s FROM %s WHERE %s < ?",
 		sqliteRequestsColAddr,
 		sqliteRequestsColURL,
 		sqliteRequestsColTotalSent,
@@ -481,9 +481,9 @@ func (a *SqliteAdapter) ListRequests(addr netip.Addr) ([]Request, error) {
 		sqliteRequestsColCreatedOn,
 		sqliteRequestsColExpiresOn,
 		sqliteTableRequests,
-		sqliteRequestsColAddr,
+		sqliteClientsColCreatedOn,
 	)
-	rows, err := a.db.Query(query, addr.String())
+	rows, err := a.db.Query(query, createdBefore.Unix())
 	if err != nil {
 		return nil, fmt.Errorf("failed to list requests: %w", err)
 	}
