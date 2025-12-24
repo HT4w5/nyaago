@@ -1,6 +1,7 @@
 package dto
 
 import (
+	"fmt"
 	"net/netip"
 	"time"
 )
@@ -12,13 +13,6 @@ type Rule struct {
 	ExpiresOn time.Time
 }
 
-type RuleJSON struct {
-	Prefix    string `json:"prefix"`
-	Addr      string `json:"addr"`
-	URL       string `json:"url"`
-	ExpiresOn int64  `json:"expires_on"` // Unix timestamp in seconds
-}
-
 func (r Rule) JSON() RuleJSON {
 	return RuleJSON{
 		Prefix:    r.Prefix.String(),
@@ -26,4 +20,28 @@ func (r Rule) JSON() RuleJSON {
 		URL:       r.URL,
 		ExpiresOn: r.ExpiresOn.Unix(),
 	}
+}
+
+type RuleJSON struct {
+	Prefix    string `json:"prefix"`
+	Addr      string `json:"addr"`
+	URL       string `json:"url"`
+	ExpiresOn int64  `json:"expires_on"` // Unix timestamp in seconds
+}
+
+// Omit prefix
+func (r RuleJSON) ToObject() (Rule, error) {
+	rule := Rule{
+		URL: r.URL,
+	}
+
+	var err error
+	rule.Addr, err = netip.ParseAddr(r.Addr)
+	if err != nil {
+		return Rule{}, fmt.Errorf("failed to parse addr")
+	}
+
+	rule.ExpiresOn = time.Unix(r.ExpiresOn, 0)
+
+	return rule, nil
 }
