@@ -33,7 +33,7 @@ func (c *sizeCache) GetSize(url string) (int64, error) {
 	}
 
 	if len(res.URL) == 0 {
-		return 0, nil // not found
+		return -1, nil // not found
 	}
 
 	// Clear cache

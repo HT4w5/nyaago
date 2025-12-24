@@ -198,7 +198,11 @@ func (s *Server) computeRules() {
 			continue
 		}
 		if size <= 0 {
-			s.logger.Warn("resource not found")
+			if size == 0 {
+				s.logger.Warn("resource size is 0, skipping")
+			} else {
+				s.logger.Warn("resource not found")
+			}
 			continue
 		}
 
