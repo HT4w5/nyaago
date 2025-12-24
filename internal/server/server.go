@@ -90,5 +90,10 @@ func (s *Server) Shutdown(ctx context.Context) {
 	if err != nil {
 		s.logger.Error("failed to shutdown gocron scheduler", logging.SlogKeyError, err)
 	}
+	err = s.db.Close()
+	if err != nil {
+		s.logger.Error("failed to close db", logging.SlogKeyError, err)
+	}
+
 	s.logger.Info("exiting")
 }
