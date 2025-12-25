@@ -8,10 +8,10 @@ import (
 )
 
 const (
-	OffAddr   = 0
-	OffBucket = 16
-	OffTime   = 24
-	SizeTotal = 32
+	recOffAddr   = 0
+	recOffBucket = 16
+	recOffTime   = 24
+	recSizeTotal = 32
 )
 
 type Record struct {
@@ -45,30 +45,30 @@ Total Length: 32 Octets (256 bits)
 */
 
 func (r *Record) Marshal() []byte {
-	buf := make([]byte, SizeTotal)
+	buf := make([]byte, recSizeTotal)
 
 	addr16 := r.Addr.As16()
-	copy(buf[OffAddr:OffBucket], addr16[:])
+	copy(buf[recOffAddr:recOffBucket], addr16[:])
 
-	binary.BigEndian.PutUint64(buf[OffBucket:OffTime], uint64(r.Bucket))
+	binary.BigEndian.PutUint64(buf[recOffBucket:recOffTime], uint64(r.Bucket))
 
-	binary.BigEndian.PutUint64(buf[OffTime:SizeTotal], uint64(r.LastModified.UnixNano()))
+	binary.BigEndian.PutUint64(buf[recOffTime:recSizeTotal], uint64(r.LastModified.UnixNano()))
 
 	return buf
 }
 
 func (r *Record) Unmarshal(data []byte) error {
-	if len(data) < SizeTotal {
+	if len(data) < recSizeTotal {
 		return fmt.Errorf("data too short")
 	}
 
-	var addrBytes [OffBucket]byte
-	copy(addrBytes[:], data[OffAddr:OffBucket])
+	var addrBytes [recOffBucket]byte
+	copy(addrBytes[:], data[recOffAddr:recOffBucket])
 	r.Addr = netip.AddrFrom16(addrBytes).Unmap()
 
-	r.Bucket = int64(binary.BigEndian.Uint64(data[OffBucket:OffTime]))
+	r.Bucket = int64(binary.BigEndian.Uint64(data[recOffBucket:recOffTime]))
 
-	nanos := int64(binary.BigEndian.Uint64(data[OffTime:SizeTotal]))
+	nanos := int64(binary.BigEndian.Uint64(data[recOffTime:recSizeTotal]))
 	r.LastModified = time.Unix(0, nanos)
 
 	return nil

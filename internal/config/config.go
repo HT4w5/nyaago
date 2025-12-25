@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 )
 
 type Config struct {
@@ -38,9 +39,21 @@ func Load(path string) (*Config, error) {
 func getDefault() Config {
 	var cfg Config
 
+	// Analyzer
 	cfg.Analyzer.BanPrefixLength.IPv4 = 24
 	cfg.Analyzer.BanPrefixLength.IPv6 = 64
+	cfg.Analyzer.RecordTTL.Duration = 24 * time.Hour
+	// 100Mbps
+	cfg.Analyzer.LeakRate = 12500000
+	// 500MB
+	cfg.Analyzer.Capacity = 500000000
+	cfg.Analyzer.Cache.Shards = 1024
+	cfg.Analyzer.Cache.CleanInterval.Duration = 5 * time.Minute
+	cfg.Analyzer.Cache.RPS = 10
+	// 1GB
+	cfg.Analyzer.Cache.MaxSize = 1000000000
 
+	// API
 	cfg.API.ListenAddr = "0.0.0.0:80"
 
 	return cfg

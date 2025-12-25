@@ -38,8 +38,8 @@ func MakeAnalyzer(cfg *config.Config) (*Analyzer, error) {
 		Shards:             a.cfg.Analyzer.Cache.Shards,
 		LifeWindow:         a.cfg.Analyzer.RecordTTL.Duration,
 		CleanWindow:        a.cfg.Analyzer.Cache.CleanInterval.Duration,
-		MaxEntriesInWindow: 1000 * 1000, // TBD
-		MaxEntrySize:       500,         // TBD
+		MaxEntriesInWindow: a.cfg.Analyzer.Cache.RPS * int(a.cfg.Analyzer.RecordTTL.Duration.Seconds()),
+		MaxEntrySize:       recSizeTotal,
 		HardMaxCacheSize:   int(a.cfg.Analyzer.Cache.MaxSize),
 		Verbose:            a.cfg.Log.LogLevel == "debug",
 		Logger:             slog.NewLogLogger(a.logger.Handler(), slog.LevelDebug),
