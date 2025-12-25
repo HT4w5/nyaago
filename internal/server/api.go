@@ -19,9 +19,8 @@ func (s *Server) HandlePing(c *gin.Context) {
 
 // -- Rule handlers --
 
-// TODO: implement paging (requires modifying db layer)
 func (s *Server) HandleGetRules(c *gin.Context) {
-	rules, err := s.db.ListRules()
+	rules, err := s.denylist.ListRules()
 	if err != nil {
 		c.JSON(
 			http.StatusInternalServerError,
@@ -40,18 +39,18 @@ func (s *Server) HandleGetRules(c *gin.Context) {
 }
 
 func (s *Server) HandleGetRule(c *gin.Context) {
-	decoded, err := base64.URLEncoding.DecodeString(c.Param("prefix"))
+	decoded, err := base64.URLEncoding.DecodeString(c.Param("addr"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, dto.ErrorJSON{Error: "invalid base64url"})
 		return
 	}
-	prefix, err := netip.ParsePrefix(string(decoded))
+	addr, err := netip.ParseAddr(string(decoded))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorJSON{Error: "invalid prefix"})
+		c.JSON(http.StatusBadRequest, dto.ErrorJSON{Error: "invalid addr"})
 		return
 	}
 
-	rule, err := s.db.GetRule(prefix)
+	rule, err := s.denylist.GetRule()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.MakeErrorJSON(err))
 		return

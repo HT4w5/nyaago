@@ -24,7 +24,7 @@ func (s *Server) writeACL() {
 		return
 	}
 
-	set, err := s.getRuleSet()
+	set, err := s.denylist.GetIPSet()
 	if err != nil {
 		s.logger.Error("failed to get ruleset", logging.SlogKeyError, err)
 		return

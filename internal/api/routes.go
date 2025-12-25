@@ -7,7 +7,7 @@ func (api *API) setupRoutesV1() {
 
 	// Rules endpoint
 	api.engine.GET("/v1/rules", api.srv.HandleGetRules)
-	api.engine.GET("/v1/rules/:prefix", api.srv.HandleGetRule)
-	api.engine.PUT("/v1/rules/:prefix", api.srv.HandlePutRule)
-	api.engine.DELETE("/v1/rules/:prefix", api.srv.HandleDeleteRule)
+	api.engine.GET("/v1/rules/:addr", api.srv.HandleGetRule)
+	api.engine.PUT("/v1/rules/:addr", api.srv.HandlePutRule)
+	api.engine.DELETE("/v1/rules/:addr", api.srv.HandleDeleteRule)
 }

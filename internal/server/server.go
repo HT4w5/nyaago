@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/HT4w5/nyaago/internal/analyzer"
 	"github.com/HT4w5/nyaago/internal/config"
+	"github.com/HT4w5/nyaago/internal/denylist"
 	"github.com/HT4w5/nyaago/internal/ingress"
 	"github.com/HT4w5/nyaago/internal/logging"
-	"github.com/HT4w5/nyaago/pkg/db"
 	"github.com/go-co-op/gocron/v2"
 )
 
@@ -21,11 +22,12 @@ const (
 )
 
 type Server struct {
-	cfg    *config.Config
-	db     db.DBAdapter
-	ia     ingress.IngressAdapter
-	cron   gocron.Scheduler
-	logger *slog.Logger
+	cfg      *config.Config
+	analyzer *analyzer.Analyzer
+	denylist *denylist.DenyList
+	ia       ingress.IngressAdapter
+	cron     gocron.Scheduler
+	logger   *slog.Logger
 }
 
 var server *Server
@@ -46,10 +48,16 @@ func GetServer(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to get logger: %w", err)
 	}
 
-	// Make DBAdapter
-	s.db, err = db.MakeDBAdapter(cfg.DB.Type, cfg.DB.Access)
+	// Create DenyList
+	s.denylist, err = denylist.MakeDenyList(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get DBAdapter: %w", err)
+		return nil, fmt.Errorf("failed to create denylist: %w", err)
+	}
+
+	// Create Analyzer
+	s.analyzer, err = analyzer.MakeAnalyzer(cfg, s.denylist)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create analyzer: %w", err)
 	}
 
 	// Create cron scheduler
@@ -75,7 +83,6 @@ func GetServer(cfg *config.Config) (*Server, error) {
 
 func (s *Server) Start(ctx context.Context, cancel context.CancelFunc) {
 	s.logger.Info("starting")
-	s.logger.Info("db driver info", "db_info", s.db.Info())
 	// Cron
 	s.cron.Start()
 
@@ -90,10 +97,9 @@ func (s *Server) Shutdown(ctx context.Context) {
 	if err != nil {
 		s.logger.Error("failed to shutdown gocron scheduler", logging.SlogKeyError, err)
 	}
-	err = s.db.Close()
-	if err != nil {
-		s.logger.Error("failed to close db", logging.SlogKeyError, err)
-	}
+
+	s.analyzer.Close()
+	s.denylist.Close()
 
 	s.logger.Info("exiting")
 }

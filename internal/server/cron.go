@@ -8,14 +8,12 @@ import (
 
 func (s *Server) setupCronJobs() {
 	s.cron.NewJob(
-		gocron.DurationJob(s.cfg.Analyzer.UpdateInterval.Duration),
-		gocron.NewTask(s.runMainCronTask),
+		gocron.DurationJob(s.cfg.Egress.Interval.Duration),
+		gocron.NewTask(s.runEgressTask),
 	)
 }
 
-func (s *Server) runMainCronTask(ctx context.Context) {
-	s.flushExpired()
-	s.computeRules()
+func (s *Server) runEgressTask(ctx context.Context) {
 	s.writeACL()
 	s.postExec(ctx)
 }

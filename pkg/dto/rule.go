@@ -9,7 +9,6 @@ import (
 type Rule struct {
 	Prefix    netip.Prefix
 	Addr      netip.Addr
-	URL       string
 	ExpiresOn time.Time
 }
 
@@ -17,7 +16,6 @@ func (r Rule) JSON() RuleJSON {
 	return RuleJSON{
 		Prefix:    r.Prefix.String(),
 		Addr:      r.Addr.String(),
-		URL:       r.URL,
 		ExpiresOn: r.ExpiresOn.Unix(),
 	}
 }
@@ -25,16 +23,12 @@ func (r Rule) JSON() RuleJSON {
 type RuleJSON struct {
 	Prefix    string `json:"prefix"`
 	Addr      string `json:"addr"`
-	URL       string `json:"url"`
 	ExpiresOn int64  `json:"expires_on"` // Unix timestamp in seconds
 }
 
 // Omit prefix
 func (r RuleJSON) ToObject() (Rule, error) {
-	rule := Rule{
-		URL: r.URL,
-	}
-
+	var rule Rule
 	var err error
 	rule.Addr, err = netip.ParseAddr(r.Addr)
 	if err != nil {
