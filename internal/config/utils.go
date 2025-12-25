@@ -4,15 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
+
+	"github.com/docker/go-units"
 )
 
 type Duration struct {
 	time.Duration
-}
-
-func (d Duration) MarshalJSON() ([]byte, error) {
-	return json.Marshal(d.String())
 }
 
 func (d *Duration) UnmarshalJSON(b []byte) error {
@@ -61,4 +60,18 @@ func (r *RegexWrapper) UnmarshalJSON(data []byte) error {
 
 func (r *RegexWrapper) IsValid() bool {
 	return r.isValid
+}
+
+type ByteSize int64
+
+func (b *ByteSize) UnmarshalJSON(data []byte) error {
+	s := strings.Trim(string(data), `"`)
+
+	res, err := units.FromHumanSize(s)
+	if err != nil {
+		return err
+	}
+
+	*b = ByteSize(res)
+	return nil
 }
