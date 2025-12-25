@@ -59,10 +59,10 @@ func (r *Record) Marshal() []byte {
 
 func (r *Record) Unmarshal(data []byte) error {
 	if len(data) < recSizeTotal {
-		return fmt.Errorf("data too short")
+		return fmt.Errorf("data too short: expected %d, got %d", recSizeTotal, len(data))
 	}
 
-	var addrBytes [recOffBucket]byte
+	var addrBytes [16]byte
 	copy(addrBytes[:], data[recOffAddr:recOffBucket])
 	r.Addr = netip.AddrFrom16(addrBytes).Unmap()
 

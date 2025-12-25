@@ -9,8 +9,8 @@ import (
 
 type Config struct {
 	Log      LogConfig      `json:"log"`
-	DB       DBConfig       `json:"db"`
 	Analyzer AnalyzerConfig `json:"analyzer"`
+	DenyList DenyListConfig `json:"deny_list"`
 	Ingress  IngressConfig  `json:"ingress"`
 	Egress   EgressConfig   `json:"egress"`
 	API      APIConfig      `json:"api"`
