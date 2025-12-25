@@ -40,8 +40,8 @@ func getDefault() Config {
 	var cfg Config
 
 	// Analyzer
-	cfg.Analyzer.BanPrefixLength.IPv4 = 24
-	cfg.Analyzer.BanPrefixLength.IPv6 = 64
+	cfg.Analyzer.DenyPrefixLength.IPv4 = 24
+	cfg.Analyzer.DenyPrefixLength.IPv6 = 64
 	cfg.Analyzer.RecordTTL.Duration = 24 * time.Hour
 	// 100Mbps
 	cfg.Analyzer.LeakRate = 12500000
@@ -60,11 +60,11 @@ func getDefault() Config {
 }
 
 func (cfg Config) verify() error {
-	if cfg.Analyzer.BanPrefixLength.IPv4 < 0 || cfg.Analyzer.BanPrefixLength.IPv4 >= 32 {
-		return fmt.Errorf("invalid analyzer.ban_prefix_length.ipv4. Must be in range of [0, 32]")
+	if cfg.Analyzer.DenyPrefixLength.IPv4 < 0 || cfg.Analyzer.DenyPrefixLength.IPv4 >= 32 {
+		return fmt.Errorf("invalid analyzer.deny_prefix_length.ipv4. Must be in range of [0, 32]")
 	}
-	if cfg.Analyzer.BanPrefixLength.IPv6 < 0 || cfg.Analyzer.BanPrefixLength.IPv6 >= 128 {
-		return fmt.Errorf("invalid analyzer.ban_prefix_length.ipv6. Must be in range of [0, 128]")
+	if cfg.Analyzer.DenyPrefixLength.IPv6 < 0 || cfg.Analyzer.DenyPrefixLength.IPv6 >= 128 {
+		return fmt.Errorf("invalid analyzer.deny_prefix_length.ipv6. Must be in range of [0, 128]")
 	}
 	return nil
 }

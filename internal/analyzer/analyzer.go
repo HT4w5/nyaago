@@ -88,19 +88,24 @@ func (a *Analyzer) ProcessRequest(r dto.Request) {
 	// Update (or create) record
 	record, err := a.getRecord(r.Client)
 	if err != nil {
-		a.logger.Error("failed to get record", logging.SlogKeyError, err)
-		return
+		if err == bigcache.ErrEntryNotFound {
+			record.Addr = r.Client
+		} else {
+			a.logger.Error("failed to get record", logging.SlogKeyError, err)
+			return
+		}
 	}
 
 	currentTime := time.Now()
 	record.Bucket = max(0, record.Bucket-int64(currentTime.Sub(record.LastModified).Seconds())*int64(a.cfg.Analyzer.LeakRate))
 	record.Bucket += r.BodySent
+	record.LastModified = currentTime
 	if record.Bucket > int64(a.cfg.Analyzer.Capacity) {
 		prefixLength := 32
 		if record.Addr.Is4() {
-			prefixLength = a.cfg.Analyzer.BanPrefixLength.IPv4
+			prefixLength = a.cfg.Analyzer.DenyPrefixLength.IPv4
 		} else if record.Addr.Is6() {
-			prefixLength = a.cfg.Analyzer.BanPrefixLength.IPv6
+			prefixLength = a.cfg.Analyzer.DenyPrefixLength.IPv6
 		}
 
 		err := a.denylist.PutEntry(
