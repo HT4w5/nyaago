@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/netip"
-	"time"
 
 	"github.com/HT4w5/nyaago/internal/config"
 	"github.com/HT4w5/nyaago/internal/denylist"
@@ -96,10 +95,14 @@ func (a *Analyzer) ProcessRequest(r dto.Request) {
 		}
 	}
 
-	currentTime := time.Now()
-	record.Bucket = max(0, record.Bucket-int64(currentTime.Sub(record.LastModified).Seconds())*int64(a.cfg.Analyzer.LeakRate))
+	// Drop if too old
+	if r.Time.Compare(record.LastModified) <= 0 {
+		a.logger.Warn("dropped obsolete request")
+		return
+	}
+	record.Bucket = max(0, record.Bucket-int64(r.Time.Sub(record.LastModified).Seconds())*int64(a.cfg.Analyzer.LeakRate))
 	record.Bucket += r.BodySent
-	record.LastModified = currentTime
+	record.LastModified = r.Time
 	if record.Bucket > int64(a.cfg.Analyzer.Capacity) {
 		prefixLength := 32
 		if record.Addr.Is4() {
