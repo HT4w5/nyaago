@@ -5,7 +5,11 @@ import (
 )
 
 func (a *Analyzer) putRecord(r Record) error {
-	err := a.cache.Set(r.Addr.String(), r.Marshal())
+	recordBytes, err := r.Marshal()
+	if err != nil {
+		return err
+	}
+	err = a.cache.Set(r.Addr.String(), recordBytes)
 	if err != nil {
 		return err
 	}

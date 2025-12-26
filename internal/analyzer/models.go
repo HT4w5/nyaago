@@ -1,18 +1,15 @@
 package analyzer
 
 import (
-	"encoding/binary"
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"net/netip"
 	"time"
 )
 
-const (
-	recOffAddr   = 0
-	recOffBucket = 16
-	recOffTime   = 24
-	recSizeTotal = 32
-)
+// Modify this after changing Record struct
+const recEncodedSize = 136 // Observed value
 
 type Record struct {
 	Addr         netip.Addr
@@ -20,56 +17,20 @@ type Record struct {
 	LastModified time.Time
 }
 
-/*
- 0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                                                               |
-+                                                               +
-|                                                               |
-+                      IP Address (128 bits)                    +
-|                (IPv4-mapped or Native IPv6)                   |
-+                                                               +
-|                                                               |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                                                               |
-+                        Bucket (64 bits)                       +
-|                    (Signed 64-bit Integer)                    |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                                                               |
-+                   Last Modified (64 bits)                     +
-|                 (Unix Nanoseconds since Epoch)                |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-Total Length: 32 Octets (256 bits)
-*/
-
-func (r *Record) Marshal() []byte {
-	buf := make([]byte, recSizeTotal)
-
-	addr16 := r.Addr.As16()
-	copy(buf[recOffAddr:recOffBucket], addr16[:])
-
-	binary.BigEndian.PutUint64(buf[recOffBucket:recOffTime], uint64(r.Bucket))
-
-	binary.BigEndian.PutUint64(buf[recOffTime:recSizeTotal], uint64(r.LastModified.UnixNano()))
-
-	return buf
+func (r *Record) Marshal() ([]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	if err := enc.Encode(r); err != nil {
+		return nil, fmt.Errorf("failed to encode record: %w", err)
+	}
+	return buf.Bytes(), nil
 }
 
 func (r *Record) Unmarshal(data []byte) error {
-	if len(data) < recSizeTotal {
-		return fmt.Errorf("data too short: expected %d, got %d", recSizeTotal, len(data))
+	buf := bytes.NewReader(data)
+	dec := gob.NewDecoder(buf)
+	if err := dec.Decode(r); err != nil {
+		return fmt.Errorf("failed to decode record: %w", err)
 	}
-
-	var addrBytes [16]byte
-	copy(addrBytes[:], data[recOffAddr:recOffBucket])
-	r.Addr = netip.AddrFrom16(addrBytes).Unmap()
-
-	r.Bucket = int64(binary.BigEndian.Uint64(data[recOffBucket:recOffTime]))
-
-	nanos := int64(binary.BigEndian.Uint64(data[recOffTime:recSizeTotal]))
-	r.LastModified = time.Unix(0, nanos)
-
 	return nil
 }
