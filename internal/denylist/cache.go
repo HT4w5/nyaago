@@ -3,30 +3,35 @@ package denylist
 import (
 	"net/netip"
 
+	"github.com/HT4w5/nyaago/pkg/dto"
 	"github.com/allegro/bigcache/v3"
 )
 
-func (l *DenyList) putEntry(e Entry) error {
-	err := l.cache.Set(e.Blame.String(), e.Marshal())
+func (l *DenyList) putRule(e dto.Rule) error {
+	entryBytes, err := e.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	err = l.cache.Set(e.Blame.String(), entryBytes)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (l *DenyList) getEntry(b netip.Addr) (Entry, error) {
+func (l *DenyList) getRule(b netip.Addr) (dto.Rule, error) {
 	entryBytes, err := l.cache.Get(b.String())
 	if err != nil {
-		// Return empty Entry on not found
+		// Return empty dto.Rule on not found
 		if err == bigcache.ErrEntryNotFound {
-			return Entry{}, nil
+			return dto.Rule{}, nil
 		}
-		return Entry{}, err
+		return dto.Rule{}, err
 	}
-	var record Entry
-	err = record.Unmarshal(entryBytes)
+	var record dto.Rule
+	err = record.UnmarshalBinary(entryBytes)
 	if err != nil {
-		return Entry{}, err
+		return dto.Rule{}, err
 	}
 	return record, nil
 }

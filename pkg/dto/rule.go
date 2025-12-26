@@ -1,41 +1,54 @@
 package dto
 
 import (
+	"bytes"
+	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"net/netip"
 	"time"
+
+	"github.com/docker/go-units"
 )
 
 type Rule struct {
+	Valid     bool
+	Blame     netip.Addr
 	Prefix    netip.Prefix
-	Addr      netip.Addr
+	RateLimit int64
 	ExpiresOn time.Time
 }
 
-func (r Rule) JSON() RuleJSON {
-	return RuleJSON{
-		Prefix:    r.Prefix.String(),
-		Addr:      r.Addr.String(),
-		ExpiresOn: r.ExpiresOn.Unix(),
+func (r *Rule) MarshalBinary() ([]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	if err := enc.Encode(r); err != nil {
+		return nil, fmt.Errorf("failed to encode entry: %w", err)
 	}
+	return buf.Bytes(), nil
+}
+
+func (r *Rule) UnmarshalBinary(data []byte) error {
+	buf := bytes.NewReader(data)
+	dec := gob.NewDecoder(buf)
+	if err := dec.Decode(r); err != nil {
+		return fmt.Errorf("failed to decode entry: %w", err)
+	}
+	return nil
+}
+
+func (r Rule) MarshalJSON() ([]byte, error) {
+	return json.Marshal(RuleJSON{
+		Blame:     r.Blame.String(),
+		Prefix:    r.Prefix.String(),
+		RateLimit: units.HumanSize(float64(r.RateLimit)),
+		ExpiresOn: r.ExpiresOn.UTC().Format(time.RFC3339),
+	})
 }
 
 type RuleJSON struct {
+	Blame     string `json:"blame"`
 	Prefix    string `json:"prefix"`
-	Addr      string `json:"addr"`
-	ExpiresOn int64  `json:"expires_on"` // Unix timestamp in seconds
-}
-
-// Omit prefix
-func (r RuleJSON) ToObject() (Rule, error) {
-	var rule Rule
-	var err error
-	rule.Addr, err = netip.ParseAddr(r.Addr)
-	if err != nil {
-		return Rule{}, fmt.Errorf("failed to parse addr")
-	}
-
-	rule.ExpiresOn = time.Unix(r.ExpiresOn, 0)
-
-	return rule, nil
+	RateLimit string `json:"rate_limit"`
+	ExpiresOn string `json:"expires_on"` // RFC3399
 }

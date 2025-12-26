@@ -27,11 +27,5 @@ func (s *Server) HandleGetRules(c *gin.Context) {
 		return
 	}
 
-	resp := make([]dto.RuleJSON, 0, len(rules))
-
-	for _, v := range rules {
-		resp = append(resp, v.JSON())
-	}
-
-	c.JSON(http.StatusOK, resp)
+	c.JSON(http.StatusOK, rules)
 }

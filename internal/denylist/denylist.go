@@ -3,26 +3,17 @@ package denylist
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/netip"
-	"time"
 
 	"github.com/HT4w5/nyaago/internal/config"
-	"github.com/HT4w5/nyaago/internal/logging"
 	"github.com/HT4w5/nyaago/pkg/dto"
 	"github.com/allegro/bigcache/v3"
 	"go4.org/netipx"
 )
 
-const (
-	slogModuleName = "denylist"
-	slogGroupName  = "denylist"
-)
-
 type DenyList struct {
-	cfg    *config.Config
-	cache  *bigcache.BigCache
-	logger *slog.Logger
+	cfg   *config.Config
+	cache *bigcache.BigCache
 }
 
 func MakeDenyList(cfg *config.Config) (*DenyList, error) {
@@ -30,13 +21,8 @@ func MakeDenyList(cfg *config.Config) (*DenyList, error) {
 		cfg: cfg,
 	}
 
-	logger, err := logging.GetLogger(&cfg.Log)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get logger: %w", err)
-	}
-	l.logger = logger.With(logging.SlogKeyModule, slogModuleName).WithGroup(slogGroupName)
-
-	l.cache, err = bigcache.New(context.Background(), bigcache.DefaultConfig(cfg.DenyList.EntryTTL.Duration))
+	var err error
+	l.cache, err = bigcache.New(context.Background(), bigcache.DefaultConfig(cfg.DenyList.RuleTTL.Duration))
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize cache: %w", err)
 	}
@@ -44,26 +30,37 @@ func MakeDenyList(cfg *config.Config) (*DenyList, error) {
 	return l, nil
 }
 
-func (l *DenyList) PutEntry(p netip.Prefix, b netip.Addr) error {
-	err := l.putEntry(Entry{
-		Prefix: p,
-		Blame:  b,
-	})
+func (l *DenyList) PutRule(r dto.Rule) error {
+	if !r.Valid {
+		return nil
+	}
+	err := l.putRule(r)
 	if err != nil {
-		l.logger.Error("failed to put entry", logging.SlogKeyError, err)
 		return fmt.Errorf("failed to put entry: %w", err)
 	}
 	return nil
 }
 
-func (l *DenyList) GetEntry(b netip.Addr) (Entry, error) {
-	e, err := l.getEntry(b)
+func (l *DenyList) GetRule(b netip.Addr) (dto.Rule, error) {
+	e, err := l.getRule(b)
 	if err != nil {
-		l.logger.Error("failed to get entry", logging.SlogKeyError, err)
-		return Entry{}, fmt.Errorf("failed to get entry: %w", err)
+		return dto.Rule{}, fmt.Errorf("failed to get entry: %w", err)
+	}
+	if !e.Valid {
+		return dto.Rule{}, nil
 	}
 
 	return e, nil
+}
+
+func (l *DenyList) DelRule(b netip.Addr) error {
+	err := l.putRule(dto.Rule{
+		Valid: false,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to put entry: %w", err)
+	}
+	return nil
 }
 
 func (l *DenyList) GetIPSet() (*netipx.IPSet, error) {
@@ -72,16 +69,16 @@ func (l *DenyList) GetIPSet() (*netipx.IPSet, error) {
 	for it.SetNext() {
 		v, err := it.Value()
 		if err != nil {
-			l.logger.Error("failed to get entry", logging.SlogKeyError, err)
-			continue
+			return nil, fmt.Errorf("failed to get entry: %w", err)
 		}
-		var entry Entry
-		err = entry.Unmarshal(v.Value())
+		var rule dto.Rule
+		err = rule.UnmarshalBinary(v.Value())
 		if err != nil {
-			l.logger.Error("failed to unmarshal entry", logging.SlogKeyError, err)
-			continue
+			return nil, fmt.Errorf("failed to unmarshal entry: %w", err)
 		}
-		b.AddPrefix(entry.Prefix)
+		if rule.Valid {
+			b.AddPrefix(rule.Prefix)
+		}
 	}
 
 	return b.IPSet()
@@ -93,19 +90,15 @@ func (l *DenyList) ListRules() ([]dto.Rule, error) {
 	for it.SetNext() {
 		v, err := it.Value()
 		if err != nil {
-			l.logger.Error("failed to get entry", logging.SlogKeyError, err)
 			return nil, fmt.Errorf("failed to get entry: %w", err)
 		}
-		var entry Entry
-		err = entry.Unmarshal(v.Value())
+		var r dto.Rule
+		err = r.UnmarshalBinary(v.Value())
 		if err != nil {
-			l.logger.Error("failed to unmarshal entry", logging.SlogKeyError, err)
-			continue
+			return nil, fmt.Errorf("failed to unmarshal entry: %w", err)
 		}
-		r := dto.Rule{
-			Prefix:    entry.Prefix,
-			Addr:      entry.Blame,
-			ExpiresOn: time.Unix(int64(v.Timestamp()), 0).Add(l.cfg.DenyList.EntryTTL.Duration),
+		if !r.Valid {
+			continue
 		}
 		rules = append(rules, r)
 	}
@@ -113,9 +106,10 @@ func (l *DenyList) ListRules() ([]dto.Rule, error) {
 	return rules, nil
 }
 
-func (l *DenyList) Close() {
+func (l *DenyList) Close() error {
 	err := l.cache.Close()
 	if err != nil {
-		l.logger.Error("failed to close cache", logging.SlogKeyError, err)
+		return fmt.Errorf("failed to close cache")
 	}
+	return nil
 }
