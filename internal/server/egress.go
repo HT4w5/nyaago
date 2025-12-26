@@ -24,12 +24,12 @@ func (s *Server) writeACL() {
 		return
 	}
 
-	set, err := s.iplist.GetIPSet()
+	rules, err := s.iplist.ListRules()
 	if err != nil {
-		s.logger.Error("failed to get ruleset", logging.SlogKeyError, err)
+		s.logger.Error("failed to get rules", logging.SlogKeyError, err)
 		return
 	}
-	err = formatter.Marshal(set, f)
+	err = formatter.Marshal(rules, f)
 	if err != nil {
 		s.logger.Error("failed to write config", logging.SlogKeyError, err, "path", s.cfg.Egress.Path, "formatter_type", s.cfg.Egress.Format)
 		return

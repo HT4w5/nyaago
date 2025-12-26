@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"io"
 
-	"go4.org/netipx"
+	"github.com/HT4w5/nyaago/pkg/dto"
 )
 
 type Formatter interface {
-	Marshal(ipset *netipx.IPSet, w io.Writer) error
+	Marshal(rules []dto.Rule, w io.Writer) error
 	Info() string
 }
 

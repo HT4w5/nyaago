@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/netip"
 
 	"github.com/HT4w5/nyaago/internal/config"
 	"github.com/HT4w5/nyaago/internal/iplist"
@@ -112,10 +111,9 @@ func (a *Analyzer) ProcessRequest(r dto.Request) {
 		severity := float64(record.Bucket) / float64(a.cfg.Analyzer.Capacity)
 		ratelimit := max(float64(a.cfg.Analyzer.LeakRate)/severity/severity, minRateLimit)
 
-		err := a.iplist.PutRule(dto.Rule{
+		err := a.iplist.PutEntry(iplist.IPEntry{
 			Valid:     true,
-			Blame:     record.Addr,
-			Prefix:    netip.PrefixFrom(record.Addr, prefixLength).Masked(),
+			Addr:      record.Addr,
 			RateLimit: int64(ratelimit),
 		})
 		if err != nil {
