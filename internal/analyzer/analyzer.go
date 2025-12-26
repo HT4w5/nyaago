@@ -108,13 +108,6 @@ func (a *Analyzer) ProcessRequest(r dto.Request) {
 	record.Bucket += r.BodySent
 	record.LastModified = r.Time
 	if record.Bucket > int64(a.cfg.Analyzer.Capacity) {
-		prefixLength := 32
-		if record.Addr.Is4() {
-			prefixLength = a.cfg.Analyzer.LimitPrefixLength.IPv4
-		} else if record.Addr.Is6() {
-			prefixLength = a.cfg.Analyzer.LimitPrefixLength.IPv6
-		}
-
 		// Calculate rate limit
 		severity := float64(record.Bucket) / float64(a.cfg.Analyzer.Capacity)
 		ratelimit := max(float64(a.cfg.Analyzer.LeakRate)/severity/severity, minRateLimit)

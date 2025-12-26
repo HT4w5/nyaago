@@ -2,12 +2,10 @@ package iplist
 
 import (
 	"iter"
-
-	"github.com/HT4w5/nyaago/pkg/dto"
 )
 
-func (l *IPList) Iterator() iter.Seq[dto.Rule] {
-	return func(yield func(dto.Rule) bool) {
+func (l *IPList) Iterator() iter.Seq[IPEntry] {
+	return func(yield func(IPEntry) bool) {
 		it := l.cache.Iterator()
 		for it.SetNext() {
 			v, err := it.Value()
@@ -15,12 +13,12 @@ func (l *IPList) Iterator() iter.Seq[dto.Rule] {
 				continue
 			}
 
-			var rule dto.Rule
-			if err := rule.UnmarshalBinary(v.Value()); err != nil {
+			var e IPEntry
+			if err := e.UnmarshalBinary(v.Value()); err != nil {
 				continue
 			}
 
-			if !yield(rule) {
+			if !yield(e) {
 				return
 			}
 		}

@@ -4,50 +4,49 @@ import (
 	"net/netip"
 	"time"
 
-	"github.com/HT4w5/nyaago/pkg/dto"
 	"github.com/allegro/bigcache/v3"
 )
 
-func (l *IPList) PutRule(e dto.Rule) error {
+func (l *IPList) PutEntry(e IPEntry) error {
 	if !e.Valid {
 		return nil
 	}
 	// Set ExpiresOn
-	e.ExpiresOn = time.Now().Add(l.cfg.IPList.RuleTTL.Duration)
+	e.ExpiresOn = time.Now().Add(l.cfg.IPList.EntryTTL.Duration)
 
 	entryBytes, err := e.MarshalBinary()
 	if err != nil {
 		return err
 	}
-	err = l.cache.Set(e.Blame.String(), entryBytes)
+	err = l.cache.Set(e.Addr.String(), entryBytes)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (l *IPList) GetRule(b netip.Addr) (dto.Rule, error) {
-	entryBytes, err := l.cache.Get(b.String())
+func (l *IPList) GetEntry(a netip.Addr) (IPEntry, error) {
+	entryBytes, err := l.cache.Get(a.String())
 	if err != nil {
-		// Return empty dto.Rule on not found
+		// Return empty IPEntry on not found
 		if err == bigcache.ErrEntryNotFound {
-			return dto.Rule{}, nil
+			return IPEntry{}, nil
 		}
-		return dto.Rule{}, err
+		return IPEntry{}, err
 	}
-	var record dto.Rule
+	var record IPEntry
 	err = record.UnmarshalBinary(entryBytes)
 	if err != nil {
-		return dto.Rule{}, err
+		return IPEntry{}, err
 	}
 	if !record.Valid {
-		return dto.Rule{}, nil
+		return IPEntry{}, nil
 	}
 	return record, nil
 }
 
-func (l *IPList) DelRule(b netip.Addr) error {
-	_, err := l.cache.Get(b.String())
+func (l *IPList) DelEntry(a netip.Addr) error {
+	_, err := l.cache.Get(a.String())
 	if err != nil {
 		if err == bigcache.ErrEntryNotFound {
 			return nil
@@ -56,11 +55,11 @@ func (l *IPList) DelRule(b netip.Addr) error {
 		}
 	}
 
-	r, err := dto.Rule{}.MarshalBinary()
+	r, err := IPEntry{}.MarshalBinary()
 	if err != nil {
 		return err
 	}
-	err = l.cache.Set(b.String(), r)
+	err = l.cache.Set(a.String(), r)
 	if err != nil {
 		return err
 	}

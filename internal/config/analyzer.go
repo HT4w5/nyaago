@@ -3,15 +3,11 @@ package config
 type AnalyzerConfig struct {
 	RecordTTL Duration `json:"record_ttl"`
 	// Bucket leak rate (bytes per second)
-	LeakRate          ByteSize        `json:"leak_rate"`
-	Capacity          ByteSize        `json:"capacity"`
-	Include           []RequestFilter `json:"include"`
-	Exclude           []RequestFilter `json:"exclude"`
-	LimitPrefixLength struct {
-		IPv4 int `json:"ipv4"`
-		IPv6 int `json:"ipv6"`
-	} `json:"limit_prefix_length"`
-	Cache CacheConfig `json:"cache"`
+	LeakRate ByteSize        `json:"leak_rate"`
+	Capacity ByteSize        `json:"capacity"`
+	Include  []RequestFilter `json:"include"`
+	Exclude  []RequestFilter `json:"exclude"`
+	Cache    CacheConfig     `json:"cache"`
 }
 
 type CacheConfig struct {

@@ -40,8 +40,6 @@ func getDefault() Config {
 	var cfg Config
 
 	// Analyzer
-	cfg.Analyzer.LimitPrefixLength.IPv4 = 24
-	cfg.Analyzer.LimitPrefixLength.IPv6 = 64
 	cfg.Analyzer.RecordTTL.Duration = 24 * time.Hour
 	// 100Mbps
 	cfg.Analyzer.LeakRate = 12500000
@@ -53,6 +51,10 @@ func getDefault() Config {
 	// 1GB
 	cfg.Analyzer.Cache.MaxSize = 1000000000
 
+	// IPList
+	cfg.IPList.ExportPrefixLength.IPv4 = 24
+	cfg.IPList.ExportPrefixLength.IPv6 = 64
+
 	// API
 	cfg.API.ListenAddr = "0.0.0.0:80"
 
@@ -60,11 +62,11 @@ func getDefault() Config {
 }
 
 func (cfg Config) verify() error {
-	if cfg.Analyzer.LimitPrefixLength.IPv4 < 0 || cfg.Analyzer.LimitPrefixLength.IPv4 >= 32 {
-		return fmt.Errorf("invalid analyzer.limit_prefix_length.ipv4. Must be in range of [0, 32]")
+	if cfg.IPList.ExportPrefixLength.IPv4 < 0 || cfg.IPList.ExportPrefixLength.IPv4 >= 32 {
+		return fmt.Errorf("invalid ip_list.export_prefix_length.ipv4. Must be in range of [0, 32]")
 	}
-	if cfg.Analyzer.LimitPrefixLength.IPv6 < 0 || cfg.Analyzer.LimitPrefixLength.IPv6 >= 128 {
-		return fmt.Errorf("invalid analyzer.limit_prefix_length.ipv6. Must be in range of [0, 128]")
+	if cfg.IPList.ExportPrefixLength.IPv6 < 0 || cfg.IPList.ExportPrefixLength.IPv6 >= 128 {
+		return fmt.Errorf("invalid ip_list.export_prefix_length.ipv6. Must be in range of [0, 128]")
 	}
 	return nil
 }
