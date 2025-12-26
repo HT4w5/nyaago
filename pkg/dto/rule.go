@@ -19,19 +19,19 @@ type Rule struct {
 	ExpiresOn time.Time
 }
 
-func (r *Rule) MarshalBinary() ([]byte, error) {
+func (r Rule) MarshalBinary() ([]byte, error) {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
-	if err := enc.Encode(r); err != nil {
+	if err := enc.Encode(&r); err != nil {
 		return nil, fmt.Errorf("failed to encode entry: %w", err)
 	}
 	return buf.Bytes(), nil
 }
 
-func (r *Rule) UnmarshalBinary(data []byte) error {
+func (r Rule) UnmarshalBinary(data []byte) error {
 	buf := bytes.NewReader(data)
 	dec := gob.NewDecoder(buf)
-	if err := dec.Decode(r); err != nil {
+	if err := dec.Decode(&r); err != nil {
 		return fmt.Errorf("failed to decode entry: %w", err)
 	}
 	return nil

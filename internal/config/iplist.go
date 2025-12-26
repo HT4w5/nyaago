@@ -1,5 +1,5 @@
 package config
 
-type DenyListConfig struct {
+type IPListConfig struct {
 	RuleTTL Duration `json:"rule_ttl"`
 }

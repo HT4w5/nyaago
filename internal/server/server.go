@@ -7,8 +7,8 @@ import (
 
 	"github.com/HT4w5/nyaago/internal/analyzer"
 	"github.com/HT4w5/nyaago/internal/config"
-	"github.com/HT4w5/nyaago/internal/denylist"
 	"github.com/HT4w5/nyaago/internal/ingress"
+	"github.com/HT4w5/nyaago/internal/iplist"
 	"github.com/HT4w5/nyaago/internal/logging"
 	"github.com/go-co-op/gocron/v2"
 )
@@ -24,7 +24,7 @@ const (
 type Server struct {
 	cfg      *config.Config
 	analyzer *analyzer.Analyzer
-	denylist *denylist.DenyList
+	iplist   *iplist.IPList
 	ia       ingress.IngressAdapter
 	cron     gocron.Scheduler
 	logger   *slog.Logger
@@ -48,14 +48,14 @@ func GetServer(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to get logger: %w", err)
 	}
 
-	// Create DenyList
-	s.denylist, err = denylist.MakeDenyList(cfg)
+	// Create IPList
+	s.iplist, err = iplist.MakeIPList(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create denylist: %w", err)
+		return nil, fmt.Errorf("failed to create iplist: %w", err)
 	}
 
 	// Create Analyzer
-	s.analyzer, err = analyzer.MakeAnalyzer(cfg, s.denylist)
+	s.analyzer, err = analyzer.MakeAnalyzer(cfg, s.iplist)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create analyzer: %w", err)
 	}
@@ -99,7 +99,7 @@ func (s *Server) Shutdown(ctx context.Context) {
 	}
 
 	s.analyzer.Close()
-	s.denylist.Close()
+	s.iplist.Close()
 
 	s.logger.Info("exiting")
 }

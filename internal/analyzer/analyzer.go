@@ -7,7 +7,7 @@ import (
 	"net/netip"
 
 	"github.com/HT4w5/nyaago/internal/config"
-	"github.com/HT4w5/nyaago/internal/denylist"
+	"github.com/HT4w5/nyaago/internal/iplist"
 	"github.com/HT4w5/nyaago/internal/logging"
 	"github.com/HT4w5/nyaago/pkg/dto"
 	"github.com/allegro/bigcache/v3"
@@ -18,17 +18,21 @@ const (
 	slogGroupName  = "analyzer"
 )
 
+const (
+	minRateLimit = 100000 // 100kbps
+)
+
 type Analyzer struct {
-	cfg      *config.Config
-	cache    *bigcache.BigCache
-	logger   *slog.Logger
-	denylist *denylist.DenyList
+	cfg    *config.Config
+	cache  *bigcache.BigCache
+	logger *slog.Logger
+	iplist *iplist.IPList
 }
 
-func MakeAnalyzer(cfg *config.Config, denylist *denylist.DenyList) (*Analyzer, error) {
+func MakeAnalyzer(cfg *config.Config, iplist *iplist.IPList) (*Analyzer, error) {
 	a := &Analyzer{
-		cfg:      cfg,
-		denylist: denylist,
+		cfg:    cfg,
+		iplist: iplist,
 	}
 
 	logger, err := logging.GetLogger(&cfg.Log)
@@ -106,17 +110,23 @@ func (a *Analyzer) ProcessRequest(r dto.Request) {
 	if record.Bucket > int64(a.cfg.Analyzer.Capacity) {
 		prefixLength := 32
 		if record.Addr.Is4() {
-			prefixLength = a.cfg.Analyzer.DenyPrefixLength.IPv4
+			prefixLength = a.cfg.Analyzer.LimitPrefixLength.IPv4
 		} else if record.Addr.Is6() {
-			prefixLength = a.cfg.Analyzer.DenyPrefixLength.IPv6
+			prefixLength = a.cfg.Analyzer.LimitPrefixLength.IPv6
 		}
 
-		err := a.denylist.PutEntry(
-			netip.PrefixFrom(record.Addr, prefixLength),
-			record.Addr,
-		)
+		// Calculate rate limit
+		severity := float64(record.Bucket) / float64(a.cfg.Analyzer.Capacity)
+		ratelimit := max(float64(a.cfg.Analyzer.LeakRate)/severity/severity, minRateLimit)
+
+		err := a.iplist.PutRule(dto.Rule{
+			Valid:     true,
+			Blame:     record.Addr,
+			Prefix:    netip.PrefixFrom(record.Addr, prefixLength).Masked(),
+			RateLimit: int64(ratelimit),
+		})
 		if err != nil {
-			a.logger.Error("failed to put denylist entry", logging.SlogKeyError, err)
+			a.logger.Error("failed to put iplist entry", logging.SlogKeyError, err)
 		}
 	}
 

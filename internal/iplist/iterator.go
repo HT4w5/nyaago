@@ -1,4 +1,4 @@
-package denylist
+package iplist
 
 import (
 	"iter"
@@ -6,7 +6,7 @@ import (
 	"github.com/HT4w5/nyaago/pkg/dto"
 )
 
-func (l *DenyList) Iterator() iter.Seq[dto.Rule] {
+func (l *IPList) Iterator() iter.Seq[dto.Rule] {
 	return func(yield func(dto.Rule) bool) {
 		it := l.cache.Iterator()
 		for it.SetNext() {

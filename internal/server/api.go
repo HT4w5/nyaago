@@ -18,7 +18,7 @@ func (s *Server) HandlePing(c *gin.Context) {
 // -- Rule handlers --
 
 func (s *Server) HandleGetRules(c *gin.Context) {
-	rules, err := s.denylist.ListRules()
+	rules, err := s.iplist.ListRules()
 	if err != nil {
 		c.JSON(
 			http.StatusInternalServerError,
