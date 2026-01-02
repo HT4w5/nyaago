@@ -14,7 +14,7 @@ func (l *IPList) Iterator() iter.Seq[IPEntry] {
 			}
 
 			var e IPEntry
-			if err := e.UnmarshalBinary(v.Value()); err != nil {
+			if err := e.Unmarshal(v.Value()); err != nil {
 				continue
 			}
 

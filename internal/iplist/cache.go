@@ -14,7 +14,7 @@ func (l *IPList) PutEntry(e IPEntry) error {
 	// Set ExpiresOn
 	e.ExpiresOn = time.Now().Add(l.cfg.IPList.EntryTTL.Duration)
 
-	entryBytes, err := e.MarshalBinary()
+	entryBytes, err := e.Marshal()
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func (l *IPList) GetEntry(a netip.Addr) (IPEntry, error) {
 		return IPEntry{}, err
 	}
 	var record IPEntry
-	err = record.UnmarshalBinary(entryBytes)
+	err = record.Unmarshal(entryBytes)
 	if err != nil {
 		return IPEntry{}, err
 	}
@@ -55,7 +55,8 @@ func (l *IPList) DelEntry(a netip.Addr) error {
 		}
 	}
 
-	r, err := IPEntry{}.MarshalBinary()
+	e := IPEntry{}
+	r, err := e.Marshal()
 	if err != nil {
 		return err
 	}

@@ -39,7 +39,7 @@ func (l *IPList) ListRules() ([]dto.Rule, error) {
 			return nil, fmt.Errorf("failed to get entry: %w", err)
 		}
 		var e IPEntry
-		err = e.UnmarshalBinary(v.Value())
+		err = e.Unmarshal(v.Value())
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal entry: %w", err)
 		}
