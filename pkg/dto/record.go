@@ -1,15 +1,18 @@
-package analyzer
+package dto
 
 import (
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
 	"net/netip"
 	"time"
+
+	"github.com/docker/go-units"
 )
 
 // Modify this after changing Record struct
-const recEncodedSize = 136 // Observed value
+const RecordEncodedSize = 136 // Observed value
 
 type Record struct {
 	Addr         netip.Addr
@@ -33,4 +36,16 @@ func (r *Record) Unmarshal(data []byte) error {
 		return fmt.Errorf("failed to decode record: %w", err)
 	}
 	return nil
+}
+
+func (r Record) MarshalJSON() ([]byte, error) {
+	return json.Marshal(RecordJSON{
+		Addr:   r.Addr.String(),
+		Bucket: units.HumanSize(float64(r.Bucket)),
+	})
+}
+
+type RecordJSON struct {
+	Addr   string `json:"addr"`
+	Bucket string `json:"bucket"`
 }

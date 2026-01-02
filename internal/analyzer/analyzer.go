@@ -45,7 +45,7 @@ func MakeAnalyzer(cfg *config.Config, iplist *iplist.IPList) (*Analyzer, error) 
 		LifeWindow:         a.cfg.Analyzer.RecordTTL.Duration,
 		CleanWindow:        a.cfg.Analyzer.Cache.CleanInterval.Duration,
 		MaxEntriesInWindow: a.cfg.Analyzer.Cache.RPS * int(a.cfg.Analyzer.RecordTTL.Duration.Seconds()),
-		MaxEntrySize:       recEncodedSize,
+		MaxEntrySize:       dto.RecordEncodedSize,
 		HardMaxCacheSize:   int(a.cfg.Analyzer.Cache.MaxSize),
 		Verbose:            a.cfg.Log.LogLevel == "debug",
 		Logger:             slog.NewLogLogger(a.logger.Handler(), slog.LevelDebug),

@@ -10,4 +10,7 @@ func (api *API) setupRoutesV1() {
 	// api.engine.GET("/v1/rules/:addr", api.srv.HandleGetRule)
 	// api.engine.PUT("/v1/rules/:addr", api.srv.HandlePutRule)
 	// api.engine.DELETE("/v1/rules/:addr", api.srv.HandleDeleteRule)
+
+	// Record endpoint
+	api.engine.GET("/v1/records", api.srv.HandleGetRecords)
 }

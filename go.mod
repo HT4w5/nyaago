@@ -10,7 +10,6 @@ require (
 	github.com/nxadm/tail v1.4.11
 	github.com/samber/slog-gin v1.18.0
 	github.com/stretchr/testify v1.11.1
-	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
 	gopkg.in/mcuadros/go-syslog.v2 v2.3.0
 )
 
