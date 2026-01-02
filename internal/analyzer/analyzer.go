@@ -98,14 +98,14 @@ func (a *Analyzer) ProcessRequest(r dto.Request) {
 		}
 	}
 
-	// Drop if too old
-	if r.Time.Compare(record.LastModified) <= 0 {
-		a.logger.Warn("dropped obsolete request")
-		return
+	// Skip bucket and time update if older than last processed request
+	if r.Time.Compare(record.LastModified) > 0 {
+		record.LastModified = r.Time
+		record.Bucket = max(0, record.Bucket-int64(r.Time.Sub(record.LastModified).Seconds())*int64(a.cfg.Analyzer.LeakRate))
 	}
-	record.Bucket = max(0, record.Bucket-int64(r.Time.Sub(record.LastModified).Seconds())*int64(a.cfg.Analyzer.LeakRate))
+
 	record.Bucket += r.BodySent
-	record.LastModified = r.Time
+
 	if record.Bucket > int64(a.cfg.Analyzer.Capacity) {
 		// Calculate rate limit
 		severity := float64(record.Bucket) / float64(a.cfg.Analyzer.Capacity)
