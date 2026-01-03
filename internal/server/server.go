@@ -83,6 +83,9 @@ func GetServer(cfg *config.Config) (*Server, error) {
 
 func (s *Server) Start(ctx context.Context, cancel context.CancelFunc) {
 	s.logger.Info("starting")
+
+	// Create egress file
+	s.writeACL()
 	// Cron
 	s.cron.Start()
 
