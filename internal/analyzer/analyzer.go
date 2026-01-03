@@ -155,8 +155,8 @@ func (a *Analyzer) exclude(r dto.Request) bool {
 	for _, v := range a.cfg.Analyzer.Exclude {
 		if v.Match(r) {
 			a.logger.Debug("request excluded", "request", r, "filter", v)
-			return false
+			return true
 		}
 	}
-	return true
+	return false
 }
