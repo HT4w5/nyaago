@@ -62,11 +62,26 @@ func getDefault() Config {
 }
 
 func (cfg Config) verify() error {
+	// IPList
 	if cfg.IPList.ExportPrefixLength.IPv4 < 0 || cfg.IPList.ExportPrefixLength.IPv4 >= 32 {
 		return fmt.Errorf("invalid ip_list.export_prefix_length.ipv4. Must be in range of [0, 32]")
 	}
 	if cfg.IPList.ExportPrefixLength.IPv6 < 0 || cfg.IPList.ExportPrefixLength.IPv6 >= 128 {
 		return fmt.Errorf("invalid ip_list.export_prefix_length.ipv6. Must be in range of [0, 128]")
 	}
+
+	// Analyzer
+	if !inValidList(cfg.Analyzer.FilterMode, analyzerFilterModes) {
+		return fmt.Errorf("invalid analyzer.filter_mode. Must be one of %v", analyzerFilterModes)
+	}
 	return nil
+}
+
+func inValidList(s string, l []string) bool {
+	for _, v := range l {
+		if v == s {
+			return true
+		}
+	}
+	return false
 }

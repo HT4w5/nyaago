@@ -69,20 +69,27 @@ func (a *Analyzer) ProcessRequest(r dto.Request) {
 	}
 
 	// Apply filters
-	// include first, then exclude
-	include := false
-	for _, v := range a.cfg.Analyzer.Include {
-		if v.Match(r) {
-			include = true
-			break
+	switch a.cfg.Analyzer.FilterMode {
+	case config.AnalyzerFilterModeIncludeOnly:
+		if !a.include(r) {
+			return
 		}
-	}
-	if !include {
-		return
-	}
-
-	for _, v := range a.cfg.Analyzer.Exclude {
-		if v.Match(r) {
+	case config.AnalyzerFilterModeExcludeOnly:
+		if a.exclude(r) {
+			return
+		}
+	case config.AnalyzerFilterModeIncludeExclude:
+		if !a.include(r) {
+			return
+		}
+		if a.exclude(r) {
+			return
+		}
+	case config.AnalyzerFilterModeExcludeInclude:
+		if a.exclude(r) {
+			return
+		}
+		if !a.include(r) {
 			return
 		}
 	}
@@ -132,4 +139,24 @@ func (a *Analyzer) Close() {
 	if err != nil {
 		a.logger.Error("failed to close cache", logging.SlogKeyError, err)
 	}
+}
+
+func (a *Analyzer) include(r dto.Request) bool {
+	for _, v := range a.cfg.Analyzer.Include {
+		if v.Match(r) {
+			a.logger.Debug("request included", "request", r, "filter", v)
+			return true
+		}
+	}
+	return false
+}
+
+func (a *Analyzer) exclude(r dto.Request) bool {
+	for _, v := range a.cfg.Analyzer.Exclude {
+		if v.Match(r) {
+			a.logger.Debug("request excluded", "request", r, "filter", v)
+			return false
+		}
+	}
+	return true
 }
