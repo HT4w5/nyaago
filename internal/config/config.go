@@ -40,23 +40,29 @@ func getDefault() Config {
 	var cfg Config
 
 	// Analyzer
-	cfg.Analyzer.RecordTTL.Duration = 24 * time.Hour
-	// 100Mbps
-	cfg.Analyzer.LeakRate = 12500000
-	// 500MB
-	cfg.Analyzer.Capacity = 500000000
+	cfg.Analyzer.RecordTTL.Duration = 2 * time.Hour
+	// 10MB/s
+	cfg.Analyzer.LeakRate = 10000000
+	// 6GB
+	cfg.Analyzer.Capacity = 6000000000
 	cfg.Analyzer.Cache.Shards = 1024
 	cfg.Analyzer.Cache.CleanInterval.Duration = 5 * time.Minute
 	cfg.Analyzer.Cache.RPS = 10
 	// 1GB
 	cfg.Analyzer.Cache.MaxSize = 1000000000
+	cfg.Analyzer.FilterMode = "none"
+
+	// Ingress
+	cfg.Ingress.Syslog.Transport = "udp"
+	cfg.Ingress.Syslog.ListenAddr = "0.0.0.0:514"
 
 	// IPList
+	cfg.IPList.EntryTTL.Duration = 30 * time.Minute
 	cfg.IPList.ExportPrefixLength.IPv4 = 24
 	cfg.IPList.ExportPrefixLength.IPv6 = 64
 
 	// API
-	cfg.API.ListenAddr = "0.0.0.0:80"
+	cfg.API.ListenAddr = "0.0.0.0:8580"
 
 	return cfg
 }
@@ -73,6 +79,10 @@ func (cfg Config) verify() error {
 	// Analyzer
 	if !inValidList(cfg.Analyzer.FilterMode, analyzerFilterModes) {
 		return fmt.Errorf("invalid analyzer.filter_mode. Must be one of %v", analyzerFilterModes)
+	}
+
+	if cfg.Analyzer.Cache.MaxSize < 1000000 && cfg.Analyzer.Cache.MaxSize == 0 {
+		return fmt.Errorf("invalid analyzer.cache.max_size. Must be larger than 1MB.")
 	}
 	return nil
 }

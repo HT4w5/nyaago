@@ -1,6 +1,7 @@
 package config
 
 const (
+	AnalyzerFilterModeNone           = "none"
 	AnalyzerFilterModeIncludeOnly    = "include-only"
 	AnalyzerFilterModeExcludeOnly    = "exclude-only"
 	AnalyzerFilterModeIncludeExclude = "include-exclude"
@@ -8,6 +9,7 @@ const (
 )
 
 var analyzerFilterModes = []string{
+	AnalyzerFilterModeNone,
 	AnalyzerFilterModeIncludeOnly,
 	AnalyzerFilterModeExcludeOnly,
 	AnalyzerFilterModeIncludeExclude,
