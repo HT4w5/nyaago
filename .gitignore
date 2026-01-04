@@ -1,6 +1,6 @@
 .vscode
 *.json
-!example.json
+!*.example.json
 *.db
 *.log
 /*.conf

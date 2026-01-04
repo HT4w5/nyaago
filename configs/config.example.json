@@ -1,0 +1,71 @@
+{
+    "log": {
+        "log_level": "info",
+        "json": false
+    },
+    "analyzer": {
+        "record_ttl": "2h",
+        "leak_rate": "10MB",
+        "capacity": "4GB",
+        "filter_mode": "include-exclude",
+        "include": [
+            {
+                "url_regex": "^/.*"
+            }
+        ],
+        "exclude": [
+            {
+                "url_regex": "^/api/.*"
+            },
+            {
+                "prefix": "10.0.0.0/8"
+            }
+        ],
+        "cache": {
+            "shards": 1024,
+            "clean_interval": "5m",
+            "rps": 10,
+            "max_size": "1GB"
+        }
+    },
+    "ingress": {
+        "method": "syslog",
+        "syslog": {
+            "transport": "udp",
+            "listen_addr": "0.0.0.0:8514"
+        },
+        "tail": {
+            "path": "/path/to/nyaago.log",
+            "poll": false
+        },
+        "format": "nginxjson"
+    },
+    "ip_list": {
+        "entry_ttl": "30m",
+        "export_prefix_length": {
+            "ipv4": 24,
+            "ipv6": 64
+        }
+    },
+    "egress": {
+        "interval": "5m",
+        "path": "/path/to/nyaago_limit.conf",
+        "format": "nginx",
+        "post_exec": [
+            {
+                "tag": "nginx-reload",
+                "cmd": "docker",
+                "args": [
+                    "exec",
+                    "service-nginx",
+                    "nginx",
+                    "-s",
+                    "reload"
+                ]
+            }
+        ]
+    },
+    "api": {
+        "listen_addr": "0.0.0.0:8580"
+    }
+}
