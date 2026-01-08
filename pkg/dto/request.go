@@ -5,12 +5,16 @@ import (
 	"time"
 )
 
-/*
-One request parsed from logs
-*/
+// Request entry
 type Request struct {
-	Client   netip.Addr // IPv4 or IPv6
-	URL      string     // E.g. "/foo/bar"
-	BodySent int64
 	Time     time.Time
+	Client   netip.Addr
+	Server   netip.Addr
+	Method   string
+	URL      string
+	Status   int
+	Sent     int64
+	Duration time.Duration
+	Host     string
+	Agent    string
 }

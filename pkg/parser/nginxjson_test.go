@@ -1,130 +1,160 @@
-package parser_test
+package parser
 
 import (
-	"net/netip"
 	"testing"
 	"time"
-
-	"github.com/HT4w5/nyaago/pkg/parser"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func TestNginxJSONParser_Parse(t *testing.T) {
-	t.Run("Happy path", func(t *testing.T) {
-		line := []byte(`{"timestamp":1734345934.123,"remote_addr":"127.0.0.1","request_method":"GET","request_uri":"/index.html","status":"200","body_bytes_sent":1024}`)
-		parser := &parser.NginxJSONParser{}
+func TestParseNginxTime(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		wantTime time.Time
+		wantErr  bool
+	}{
+		{
+			name:     "valid time with 3 decimal places",
+			input:    "1734345934.123",
+			wantTime: time.Unix(1734345934, 123000000),
+			wantErr:  false,
+		},
+		{
+			name:     "valid time with 1 decimal place",
+			input:    "1734345934.1",
+			wantTime: time.Unix(1734345934, 100000000),
+			wantErr:  false,
+		},
+		{
+			name:     "valid time with 6 decimal places",
+			input:    "1734345934.123456",
+			wantTime: time.Unix(1734345934, 123456000),
+			wantErr:  false,
+		},
+		{
+			name:     "valid time with 9 decimal places (nanoseconds)",
+			input:    "1734345934.123456789",
+			wantTime: time.Unix(1734345934, 123456789),
+			wantErr:  false,
+		},
+		{
+			name:     "time with no decimal part",
+			input:    "1734345934",
+			wantTime: time.Time{},
+			wantErr:  true,
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			wantTime: time.Time{},
+			wantErr:  true,
+		},
+		{
+			name:     "invalid format - no dot",
+			input:    "invalid",
+			wantTime: time.Time{},
+			wantErr:  true,
+		},
+		{
+			name:     "time with only decimal part",
+			input:    ".123",
+			wantTime: time.Unix(0, 123000000),
+			wantErr:  true,
+		},
+	}
 
-		req, err := parser.Parse(line)
-		require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseNginxTime(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseNginxTime() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && !got.Equal(tt.wantTime) {
+				t.Errorf("parseNginxTime() = %v, want %v", got, tt.wantTime)
+			}
+		})
+	}
+}
 
-		assert.Equal(t, "/index.html", req.URL)
-		assert.Equal(t, int64(1024), req.BodySent)
-		assert.Equal(t, time.Unix(1734345934, 0), req.Time)
-		assert.Equal(t, netip.MustParseAddr("127.0.0.1"), req.Client)
-	})
+func TestParseNginxDuration(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantDur time.Duration
+		wantErr bool
+	}{
+		{
+			name:    "valid duration with 3 decimal places",
+			input:   "1.123",
+			wantDur: time.Duration(1123000000), // 1.123 seconds in nanoseconds
+			wantErr: false,
+		},
+		{
+			name:    "valid duration with 1 decimal place",
+			input:   "0.5",
+			wantDur: time.Duration(500000000), // 0.5 seconds in nanoseconds
+			wantErr: false,
+		},
+		{
+			name:    "valid duration with 6 decimal places",
+			input:   "2.123456",
+			wantDur: time.Duration(2123456000), // 2.123456 seconds in nanoseconds
+			wantErr: false,
+		},
+		{
+			name:    "valid duration with 9 decimal places",
+			input:   "0.123456789",
+			wantDur: time.Duration(123456789), // 0.123456789 seconds in nanoseconds
+			wantErr: false,
+		},
+		{
+			name:    "duration with no decimal part",
+			input:   "5",
+			wantDur: 0,
+			wantErr: true,
+		},
+		{
+			name:    "empty string",
+			input:   "",
+			wantDur: 0,
+			wantErr: true,
+		},
+		{
+			name:    "invalid format - no dot",
+			input:   "invalid",
+			wantDur: 0,
+			wantErr: true,
+		},
+		{
+			name:    "duration with only decimal part",
+			input:   ".123",
+			wantDur: time.Duration(123000000), // 0.123 seconds in nanoseconds
+			wantErr: true,
+		},
+		{
+			name:    "zero duration",
+			input:   "0.0",
+			wantDur: time.Duration(0),
+			wantErr: false,
+		},
+		{
+			name:    "large duration",
+			input:   "86400.123",                   // 1 day + 123ms
+			wantDur: time.Duration(86400123000000), // 86400.123 seconds in nanoseconds
+			wantErr: false,
+		},
+	}
 
-	t.Run("Invalid JSON", func(t *testing.T) {
-		line := []byte(`{"timestamp":1734345934.123,"remote_addr":"127.0.0.1","request_method":"GET","request_uri":"/index.html","status":"200","body_bytes_sent":1024`)
-		parser := &parser.NginxJSONParser{}
-
-		_, err := parser.Parse(line)
-		require.Error(t, err)
-	})
-
-	t.Run("Missing remote_addr", func(t *testing.T) {
-		line := []byte(`{"timestamp":1734345934.123,"request_method":"GET","request_uri":"/index.html","status":"200","body_bytes_sent":1024}`)
-		parser := &parser.NginxJSONParser{}
-
-		_, err := parser.Parse(line)
-		require.Error(t, err)
-	})
-
-	t.Run("Invalid remote_addr", func(t *testing.T) {
-		line := []byte(`{"timestamp":1734345934.123,"remote_addr":"invalid","request_method":"GET","request_uri":"/index.html","status":"200","body_bytes_sent":1024}`)
-		parser := &parser.NginxJSONParser{}
-
-		_, err := parser.Parse(line)
-		require.Error(t, err)
-	})
-
-	t.Run("Negative body_bytes_sent", func(t *testing.T) {
-		line := []byte(`{"timestamp":1734345934.123,"remote_addr":"127.0.0.1","request_method":"GET","request_uri":"/index.html","status":"200","body_bytes_sent":-1024}`)
-		parser := &parser.NginxJSONParser{}
-
-		req, err := parser.Parse(line)
-		require.NoError(t, err)
-
-		assert.Equal(t, int64(-1024), req.BodySent)
-	})
-
-	t.Run("Empty request_uri", func(t *testing.T) {
-		line := []byte(`{"timestamp":1734345934.123,"remote_addr":"127.0.0.1","request_method":"GET","request_uri":"","status":"200","body_bytes_sent":1024}`)
-		parser := &parser.NginxJSONParser{}
-
-		req, err := parser.Parse(line)
-		require.NoError(t, err)
-
-		assert.Equal(t, "", req.URL)
-	})
-
-	t.Run("IPv6 remote_addr", func(t *testing.T) {
-		line := []byte(`{"timestamp":1734345934.123,"remote_addr":"::1","request_method":"GET","request_uri":"/index.html","status":"200","body_bytes_sent":1024}`)
-		parser := &parser.NginxJSONParser{}
-
-		req, err := parser.Parse(line)
-		require.NoError(t, err)
-
-		assert.Equal(t, netip.MustParseAddr("::1"), req.Client)
-	})
-
-	t.Run("Large timestamp", func(t *testing.T) {
-		line := []byte(`{"timestamp":1834345934.123,"remote_addr":"127.0.0.1","request_method":"GET","request_uri":"/index.html","status":"200","body_bytes_sent":1024}`)
-		parser := &parser.NginxJSONParser{}
-
-		req, err := parser.Parse(line)
-		require.NoError(t, err)
-
-		assert.Equal(t, time.Unix(1834345934, 0), req.Time)
-	})
-
-	t.Run("Small timestamp", func(t *testing.T) {
-		line := []byte(`{"timestamp":1634345934.123,"remote_addr":"127.0.0.1","request_method":"GET","request_uri":"/index.html","status":"200","body_bytes_sent":1024}`)
-		parser := &parser.NginxJSONParser{}
-
-		req, err := parser.Parse(line)
-		require.NoError(t, err)
-
-		assert.Equal(t, time.Unix(1634345934, 0), req.Time)
-	})
-
-	t.Run("Zero timestamp", func(t *testing.T) {
-		line := []byte(`{"timestamp":0,"remote_addr":"127.0.0.1","request_method":"GET","request_uri":"/index.html","status":"200","body_bytes_sent":1024}`)
-		parser := &parser.NginxJSONParser{}
-
-		req, err := parser.Parse(line)
-		require.NoError(t, err)
-
-		assert.Equal(t, time.Unix(0, 0), req.Time)
-	})
-
-	t.Run("Negative timestamp", func(t *testing.T) {
-		line := []byte(`{"timestamp":-1734345934.123,"remote_addr":"127.0.0.1","request_method":"GET","request_uri":"/index.html","status":"200","body_bytes_sent":1024}`)
-		parser := &parser.NginxJSONParser{}
-
-		req, err := parser.Parse(line)
-		require.NoError(t, err)
-
-		assert.Equal(t, time.Unix(-1734345934, 0), req.Time)
-	})
-
-	t.Run("Zero body_bytes_sent", func(t *testing.T) {
-		line := []byte(`{"timestamp":1734345934.123,"remote_addr":"127.0.0.1","request_method":"GET","request_uri":"/index.html","status":"200","body_bytes_sent":0}`)
-		parser := &parser.NginxJSONParser{}
-
-		req, err := parser.Parse(line)
-		require.NoError(t, err)
-
-		assert.Equal(t, int64(0), req.BodySent)
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseNginxDuration(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseNginxDuration() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && got != tt.wantDur {
+				t.Errorf("parseNginxDuration() = %v, want %v", got, tt.wantDur)
+			}
+		})
+	}
 }

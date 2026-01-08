@@ -64,7 +64,7 @@ func (a *Analyzer) ProcessRequest(r dto.Request) {
 	a.logger.Debug("processing request", "request", r)
 
 	// Early return for invalid requests
-	if r.BodySent <= 0 {
+	if r.Sent <= 0 {
 		return
 	}
 
@@ -112,7 +112,7 @@ func (a *Analyzer) ProcessRequest(r dto.Request) {
 		record.Bucket = max(0, record.Bucket-int64(r.Time.Sub(record.LastModified).Seconds())*int64(a.cfg.Analyzer.LeakRate))
 	}
 
-	record.Bucket += r.BodySent
+	record.Bucket += r.Sent
 
 	if record.Bucket > int64(a.cfg.Analyzer.Capacity) {
 		// Calculate rate limit
