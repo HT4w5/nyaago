@@ -24,7 +24,7 @@ func (s *Server) writeACL() {
 		return
 	}
 
-	rules, err := s.iplist.ListRules()
+	rules, err := s.rulelist.ListRules()
 	if err != nil {
 		s.logger.Error("failed to get rules", logging.SlogKeyError, err)
 		return

@@ -1,6 +1,6 @@
 package config
 
-type IPListConfig struct {
+type RuleListConfig struct {
 	EntryTTL           Duration `json:"entry_ttl"`
 	ExportPrefixLength struct {
 		IPv4 int `json:"ipv4"`

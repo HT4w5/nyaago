@@ -18,7 +18,7 @@ func (s *Server) HandlePing(c *gin.Context) {
 // -- Rule handlers --
 
 func (s *Server) HandleGetRules(c *gin.Context) {
-	rules, err := s.iplist.ListRules()
+	rules, err := s.rulelist.ListRules()
 	if err != nil {
 		c.JSON(
 			http.StatusInternalServerError,
@@ -33,8 +33,8 @@ func (s *Server) HandleGetRules(c *gin.Context) {
 // -- Record handlers --
 
 func (s *Server) HandleGetRecords(c *gin.Context) {
-	records := make([]dto.Record, 0, s.analyzer.Len())
-	for v := range s.analyzer.Iterator() {
+	records := make([]dto.Record, 0, s.router.Len())
+	for v := range s.router.Iterator() {
 		records = append(records, v)
 	}
 

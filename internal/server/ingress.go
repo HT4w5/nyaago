@@ -19,7 +19,7 @@ func (s *Server) runIngressWorker(ctx context.Context, cancel context.CancelFunc
 		case <-ctx.Done():
 			return
 		case req := <-requestChan:
-			s.analyzer.ProcessRequest(req)
+			s.router.ProcessRequest(req)
 		}
 	}
 }

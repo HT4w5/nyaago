@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/HT4w5/nyaago/internal/analyzer"
 	"github.com/HT4w5/nyaago/internal/config"
 	"github.com/HT4w5/nyaago/internal/ingress"
-	"github.com/HT4w5/nyaago/internal/iplist"
 	"github.com/HT4w5/nyaago/internal/logging"
+	"github.com/HT4w5/nyaago/internal/router"
+	"github.com/HT4w5/nyaago/internal/rulelist"
+	"github.com/dgraph-io/badger/v4"
 	"github.com/go-co-op/gocron/v2"
 )
 
@@ -23,8 +24,9 @@ const (
 
 type Server struct {
 	cfg      *config.Config
-	analyzer *analyzer.Analyzer
-	iplist   *iplist.IPList
+	db       *badger.DB
+	router   *router.Router
+	rulelist *rulelist.RuleList
 	ia       ingress.IngressAdapter
 	cron     gocron.Scheduler
 	logger   *slog.Logger
@@ -48,16 +50,22 @@ func GetServer(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to get logger: %w", err)
 	}
 
-	// Create IPList
-	s.iplist, err = iplist.MakeIPList(cfg)
+	// Open DB
+	s.db, err = badger.Open(badger.DefaultOptions(s.cfg.DB.Dir))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create iplist: %w", err)
+		return nil, fmt.Errorf("failed to open db: %w", err)
 	}
 
-	// Create Analyzer
-	s.analyzer, err = analyzer.MakeAnalyzer(cfg, s.iplist)
+	// Create RuleList
+	s.rulelist, err = rulelist.MakeRuleList(cfg, s.db)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create analyzer: %w", err)
+		return nil, fmt.Errorf("failed to create rulelist: %w", err)
+	}
+
+	// Create Router
+	s.router, err = router.MakeRouter(cfg, s.rulelist)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
 
 	// Create cron scheduler
@@ -101,8 +109,8 @@ func (s *Server) Shutdown(ctx context.Context) {
 		s.logger.Error("failed to shutdown gocron scheduler", logging.SlogKeyError, err)
 	}
 
-	s.analyzer.Close()
-	s.iplist.Close()
+	s.router.Close()
+	s.db.Close()
 
 	s.logger.Info("exiting")
 }

@@ -3,7 +3,10 @@
         "log_level": "info",
         "json": false
     },
-    "analyzer": {
+    "db": {
+        "dir": "/path/to/badger"
+    },
+    "router": {
         "record_ttl": "2h",
         "leak_rate": "10MB",
         "capacity": "4GB",
