@@ -7,10 +7,16 @@ import (
 	"time"
 )
 
+type ConfigObject interface {
+	setDefault()     // Sets all fields to default value
+	validate() error // Verify fields
+}
+
 type Config struct {
 	Log      LogConfig      `json:"log"`
-	Analyzer AnalyzerConfig `json:"analyzer"`
-	IPList   IPListConfig   `json:"ip_list"`
+	DB       DBConfig       `json:"db"`
+	Router   RouterConfig   `json:"router"`
+	RuleList RuleListConfig `json:"ip_list"`
 	Ingress  IngressConfig  `json:"ingress"`
 	Egress   EgressConfig   `json:"egress"`
 	API      APIConfig      `json:"api"`
@@ -39,27 +45,30 @@ func Load(path string) (*Config, error) {
 func getDefault() Config {
 	var cfg Config
 
-	// Analyzer
-	cfg.Analyzer.RecordTTL.Duration = 2 * time.Hour
+	// DB
+	cfg.DB.Dir = "./nyaago.db"
+
+	// Router
+	cfg.Router.RecordTTL.Duration = 2 * time.Hour
 	// 10MB/s
-	cfg.Analyzer.LeakRate = 10000000
+	cfg.Router.LeakRate = 10000000
 	// 6GB
-	cfg.Analyzer.Capacity = 6000000000
-	cfg.Analyzer.Cache.Shards = 1024
-	cfg.Analyzer.Cache.CleanInterval.Duration = 5 * time.Minute
-	cfg.Analyzer.Cache.RPS = 10
+	cfg.Router.Capacity = 6000000000
+	cfg.Router.Cache.Shards = 1024
+	cfg.Router.Cache.CleanInterval.Duration = 5 * time.Minute
+	cfg.Router.Cache.RPS = 10
 	// 1GB
-	cfg.Analyzer.Cache.MaxSize = 1000000000
-	cfg.Analyzer.FilterMode = "none"
+	cfg.Router.Cache.MaxSize = 1000000000
+	cfg.Router.FilterMode = "none"
 
 	// Ingress
 	cfg.Ingress.Syslog.Transport = "udp"
 	cfg.Ingress.Syslog.ListenAddr = "0.0.0.0:514"
 
-	// IPList
-	cfg.IPList.EntryTTL.Duration = 30 * time.Minute
-	cfg.IPList.ExportPrefixLength.IPv4 = 24
-	cfg.IPList.ExportPrefixLength.IPv6 = 64
+	// RuleList
+	cfg.RuleList.EntryTTL.Duration = 30 * time.Minute
+	cfg.RuleList.ExportPrefixLength.IPv4 = 24
+	cfg.RuleList.ExportPrefixLength.IPv6 = 64
 
 	// API
 	cfg.API.ListenAddr = "0.0.0.0:8580"
@@ -68,21 +77,21 @@ func getDefault() Config {
 }
 
 func (cfg Config) verify() error {
-	// IPList
-	if cfg.IPList.ExportPrefixLength.IPv4 < 0 || cfg.IPList.ExportPrefixLength.IPv4 >= 32 {
+	// RuleList
+	if cfg.RuleList.ExportPrefixLength.IPv4 < 0 || cfg.RuleList.ExportPrefixLength.IPv4 >= 32 {
 		return fmt.Errorf("invalid ip_list.export_prefix_length.ipv4. Must be in range of [0, 32]")
 	}
-	if cfg.IPList.ExportPrefixLength.IPv6 < 0 || cfg.IPList.ExportPrefixLength.IPv6 >= 128 {
+	if cfg.RuleList.ExportPrefixLength.IPv6 < 0 || cfg.RuleList.ExportPrefixLength.IPv6 >= 128 {
 		return fmt.Errorf("invalid ip_list.export_prefix_length.ipv6. Must be in range of [0, 128]")
 	}
 
-	// Analyzer
-	if !inValidList(cfg.Analyzer.FilterMode, analyzerFilterModes) {
-		return fmt.Errorf("invalid analyzer.filter_mode. Must be one of %v", analyzerFilterModes)
+	// Router
+	if !inValidList(cfg.Router.FilterMode, routerFilterModes) {
+		return fmt.Errorf("invalid router.filter_mode. Must be one of %v", routerFilterModes)
 	}
 
-	if cfg.Analyzer.Cache.MaxSize < 1000000 && cfg.Analyzer.Cache.MaxSize == 0 {
-		return fmt.Errorf("invalid analyzer.cache.max_size. Must be larger than 1MB.")
+	if cfg.Router.Cache.MaxSize < 1000000 && cfg.Router.Cache.MaxSize == 0 {
+		return fmt.Errorf("invalid router.cache.max_size. Must be larger than 1MB.")
 	}
 	return nil
 }
