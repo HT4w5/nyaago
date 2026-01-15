@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -29,10 +28,7 @@ const (
 )
 
 func MakeAPI(cfg *config.Config, s *server.Server) (*API, error) {
-	logger, err := logging.GetLogger(&cfg.Log)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get logger: %w", err)
-	}
+	logger := logging.GetLogger()
 	api := &API{
 		engine: gin.New(),
 		logger: logger.With(logging.SlogKeyModule, slogModuleName).WithGroup(slogGroupName),

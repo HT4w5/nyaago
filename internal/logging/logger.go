@@ -17,9 +17,13 @@ const (
 
 var logger *slog.Logger
 
-func GetLogger(cfg *config.LogConfig) (*slog.Logger, error) {
+func GetLogger() *slog.Logger {
+	return logger
+}
+
+func Init(cfg *config.LogConfig) error {
 	if logger != nil {
-		return logger, nil
+		return nil
 	}
 
 	if cfg.LogLevel == "debug" {
@@ -31,13 +35,14 @@ func GetLogger(cfg *config.LogConfig) (*slog.Logger, error) {
 	var writer io.Writer
 	switch cfg.Access {
 	case "none":
-		return slog.New(slog.DiscardHandler), nil
+		logger = slog.New(slog.DiscardHandler)
+		return nil
 	case "":
 		writer = os.Stdout
 	default:
 		f, err := os.OpenFile(cfg.Access, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			return nil, fmt.Errorf("failed to open log file %s: %w", cfg.Access, err)
+			return fmt.Errorf("failed to open log file %s: %w", cfg.Access, err)
 		}
 		writer = f
 	}
@@ -54,11 +59,12 @@ func GetLogger(cfg *config.LogConfig) (*slog.Logger, error) {
 	case "error":
 		level = slog.LevelError
 	case "none":
-		return slog.New(slog.DiscardHandler), nil
+		logger = slog.New(slog.DiscardHandler)
+		return nil
 	case "":
 		level = slog.LevelError
 	default:
-		return nil, fmt.Errorf("invalid log level: %s", cfg.LogLevel)
+		return fmt.Errorf("invalid log level: %s", cfg.LogLevel)
 	}
 
 	if cfg.Json {
@@ -74,5 +80,5 @@ func GetLogger(cfg *config.LogConfig) (*slog.Logger, error) {
 	}
 
 	logger = slog.New(handler)
-	return logger, nil
+	return nil
 }

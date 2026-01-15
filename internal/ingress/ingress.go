@@ -3,7 +3,6 @@ package ingress
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"github.com/HT4w5/nyaago/internal/config"
 	"github.com/HT4w5/nyaago/internal/logging"
@@ -25,7 +24,7 @@ type IngressAdapter interface {
 	Start(ctx context.Context, out chan<- dto.Request, cancel context.CancelFunc)
 }
 
-func MakeIngressAdapter(cfg *config.IngressConfig, logger *slog.Logger) (IngressAdapter, error) {
+func MakeIngressAdapter(cfg *config.IngressConfig) (IngressAdapter, error) {
 	// Setup parser
 	var p parser.Parser
 	switch cfg.Format {
@@ -40,7 +39,7 @@ func MakeIngressAdapter(cfg *config.IngressConfig, logger *slog.Logger) (Ingress
 	}
 
 	// Setup logger
-	logger = logger.With(logging.SlogKeyModule, slogModuleName).WithGroup(slogGroupName)
+	logger := logging.GetLogger().With(logging.SlogKeyModule, slogModuleName).WithGroup(slogGroupName)
 
 	switch cfg.Method {
 	case "tail":

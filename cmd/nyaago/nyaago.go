@@ -11,6 +11,7 @@ import (
 
 	"github.com/HT4w5/nyaago/internal/api"
 	"github.com/HT4w5/nyaago/internal/config"
+	"github.com/HT4w5/nyaago/internal/logging"
 	"github.com/HT4w5/nyaago/internal/server"
 	"github.com/HT4w5/nyaago/pkg/meta"
 )
@@ -18,6 +19,7 @@ import (
 const (
 	exitSuccess = iota
 	exitConfigError
+	exitLoggerError
 	exitServerError
 	exitAPIError
 )
@@ -41,6 +43,12 @@ func main() {
 	if err != nil {
 		fmt.Printf("Failed to load config %s: %v\n", cfgPath, err)
 		os.Exit(exitConfigError)
+	}
+
+	err = logging.Init(&cfg.Log)
+	if err != nil {
+		fmt.Printf("Failed to setup logger: %v\n", err)
+		os.Exit(exitLoggerError)
 	}
 
 	srv, err := server.GetServer(cfg)

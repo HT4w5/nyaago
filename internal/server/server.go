@@ -45,10 +45,7 @@ func GetServer(cfg *config.Config) (*Server, error) {
 
 	var err error
 	// Create logger
-	logger, err := logging.GetLogger(&cfg.Log)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get logger: %w", err)
-	}
+	logger := logging.GetLogger()
 
 	// Open DB
 	s.db, err = badger.Open(badger.DefaultOptions(s.cfg.DB.Dir))
@@ -63,7 +60,7 @@ func GetServer(cfg *config.Config) (*Server, error) {
 	}
 
 	// Create Router
-	s.router, err = router.MakeRouter(cfg, s.rulelist)
+	s.router, err = router.MakeRouter(&cfg.Router)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create router: %w", err)
 	}
@@ -78,7 +75,7 @@ func GetServer(cfg *config.Config) (*Server, error) {
 	s.setupCronJobs()
 
 	// Create ingress adapter
-	s.ia, err = ingress.MakeIngressAdapter(&cfg.Ingress, logger)
+	s.ia, err = ingress.MakeIngressAdapter(&cfg.Ingress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create ingress adapter: %w", err)
 	}
