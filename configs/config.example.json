@@ -7,28 +7,9 @@
         "dir": "/path/to/badger"
     },
     "router": {
-        "record_ttl": "2h",
-        "leak_rate": "10MB",
-        "capacity": "4GB",
-        "filter_mode": "include-exclude",
-        "include": [
-            {
-                "url_regex": "^/.*"
-            }
-        ],
-        "exclude": [
-            {
-                "url_regex": "^/api/.*"
-            },
-            {
-                "prefix": "10.0.0.0/8"
-            }
-        ],
-        "cache": {
-            "shards": 1024,
-            "clean_interval": "5m",
-            "rps": 10,
-            "max_size": "1GB"
+        "flow": {
+            "action": "sequence",
+            "subflow": []
         }
     },
     "ingress": {

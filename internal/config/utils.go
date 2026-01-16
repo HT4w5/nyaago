@@ -1,8 +1,7 @@
 package config
 
 import (
-	"encoding/json"
-	"fmt"
+	"net/netip"
 	"regexp"
 	"strings"
 	"time"
@@ -10,43 +9,26 @@ import (
 	"github.com/docker/go-units"
 )
 
-type Duration struct {
-	time.Duration
-}
+type Duration time.Duration
 
-func (d *Duration) UnmarshalJSON(b []byte) error {
-	var v interface{}
-	if err := json.Unmarshal(b, &v); err != nil {
+func (d *Duration) UnmarshalJSON(data []byte) error {
+	s := strings.Trim(string(data), `"`)
+
+	du, err := time.ParseDuration(s)
+	if err != nil {
 		return err
 	}
 
-	switch value := v.(type) {
-	case float64:
-		d.Duration = time.Duration(value)
-		return nil
-	case string:
-		var err error
-		d.Duration, err = time.ParseDuration(value)
-		return err
-	default:
-		return fmt.Errorf("invalid duration type: %T", v)
-	}
+	*d = Duration(du)
+	return nil
 }
 
-type RegexWrapper struct {
+type Regexp struct {
 	*regexp.Regexp
-	isValid bool
 }
 
-func (r *RegexWrapper) UnmarshalJSON(data []byte) error {
-	r.isValid = false
-	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		return err
-	}
-	if len(s) == 0 {
-		return nil
-	}
+func (r *Regexp) UnmarshalJSON(data []byte) error {
+	s := strings.Trim(string(data), `"`)
 
 	re, err := regexp.Compile(s)
 	if err != nil {
@@ -54,12 +36,7 @@ func (r *RegexWrapper) UnmarshalJSON(data []byte) error {
 	}
 
 	r.Regexp = re
-	r.isValid = true
 	return nil
-}
-
-func (r *RegexWrapper) IsValid() bool {
-	return r.isValid
 }
 
 type ByteSize int64
@@ -74,4 +51,16 @@ func (b *ByteSize) UnmarshalJSON(data []byte) error {
 
 	*b = ByteSize(res)
 	return nil
+}
+
+type IPPrefix struct {
+	netip.Prefix
+}
+
+func (p *IPPrefix) UnmarshalJSON(data []byte) error {
+	s := strings.Trim(string(data), `"`)
+
+	var err error
+	p.Prefix, err = netip.ParsePrefix(s)
+	return err
 }
