@@ -14,17 +14,15 @@ import (
 type LeakyBucket struct {
 	cfg         *config.LeakyBucketConfig
 	db          *badger.DB
-	rulelist    *rulelist.RuleList
 	kb          *dbkey.KeyBuilder
 	cachedRules []dto.Rule
 }
 
-func MakeLeakyBucket(cfg *config.LeakyBucketConfig, db *badger.DB, rulelist *rulelist.RuleList) *LeakyBucket {
+func MakeLeakyBucket(cfg *config.LeakyBucketConfig, db *badger.DB) *LeakyBucket {
 	kb := (&dbkey.KeyBuilder{}).WithTag(dbkey.LeakyBucketTag)
 	return &LeakyBucket{
 		cfg:         cfg,
 		db:          db,
-		rulelist:    rulelist,
 		kb:          kb,
 		cachedRules: make([]dto.Rule, 0),
 	}
@@ -60,9 +58,9 @@ func (lb *LeakyBucket) Process(request dto.Request) error {
 		// Get prefix
 		prefixLength := 32
 		if rec.Addr.Is4() {
-			prefixLength = lb.cfg.RuleSettings.PrefixLength.IPv4
+			prefixLength = lb.cfg.Export.PrefixLength.IPv4
 		} else if rec.Addr.Is6() {
-			prefixLength = lb.cfg.RuleSettings.PrefixLength.IPv6
+			prefixLength = lb.cfg.Export.PrefixLength.IPv6
 		}
 		prefix := netip.PrefixFrom(rec.Addr, prefixLength).Masked()
 
