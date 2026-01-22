@@ -1,87 +1,53 @@
 package config
 
-import (
-	"encoding/binary"
-	"encoding/json"
-	"hash/fnv"
-)
-
-type AnalyzerConfig interface {
-	Hash() uint32 // Generate unique db key prefix for every unique config
+// Config for request analyzer
+type AnaylzerConfig struct {
+	LeakyBucket      LeakyBucketConfig      `json:"leaky_bucket"`
+	FileSendRatio    FileSendRatioConfig    `json:"file_send_ratio"`
+	RequestFrequency RequestFrequencyConfig `json:"request_frequecy"`
 }
 
-type AnalyzerInstanceConfig struct {
-	Tag    string
-	Type   string
-	Config AnalyzerConfig
-}
-
-type AnalyzerInstanceConfigJSON struct {
-	Tag    string          `json:"tag"`
-	Type   string          `json:"type"`
-	Config json.RawMessage `json:"config"`
-}
-
-func (c *AnalyzerInstanceConfig) UnmarshalJSON(data []byte) error {
-	var cfgJSON AnalyzerInstanceConfigJSON
-	err := json.Unmarshal(data, &cfgJSON)
-	if err != nil {
-		return err
-	}
-	c.Tag = cfgJSON.Tag
-	c.Type = cfgJSON.Type
-
-	switch cfgJSON.Type {
-	case "lbucket":
-		var lc LeakyBucketConfig
-		err := json.Unmarshal(cfgJSON.Config, &lc)
-		if err != nil {
-			return err
-		}
-		c.Config = lc
-	default:
-	}
-	return nil
-}
-
-func (c AnalyzerInstanceConfig) Hash() uint32 {
-	h := fnv.New32a()
-	binary.Write(h, binary.BigEndian, c.Tag)
-	binary.Write(h, binary.BigEndian, c.Type)
-	return hashCombine(h.Sum32(), c.Config.Hash())
-}
-
+// Config for leaky bucket analyzer
 type LeakyBucketConfig struct {
-	LeakRate ByteSize     `json:"leak_rate"`
-	Capacity ByteSize     `json:"capacity"`
-	MinRate  ByteSize     `json:"min_rate"`
-	Export   ExportConfig `json:"export"`
+	Enabled  bool     `json:"enabled"`
+	LeakRate ByteSize `json:"leak_rate"` // Rate of bucket leak per second for a single client
+	Export   struct {
+		ExportCommonConfig
+		Capacity ByteSize `json:"capacity"` // Capacity of bucket. Amount of data accumulated before a bucket leaks
+		MinRate  ByteSize `json:"min_rate"` // Minimum rate limit applyed to a client (to avoid connection timeout)
+	}
 }
 
-func (c LeakyBucketConfig) Hash() uint32 {
-	h := fnv.New32a()
-	binary.Write(h, binary.BigEndian, c.LeakRate)
-	binary.Write(h, binary.BigEndian, c.Capacity)
-	binary.Write(h, binary.BigEndian, c.MinRate)
-	return hashCombine(h.Sum32(), c.Export.Hash())
+type FileSendRatioConfig struct {
+	Enabled   bool     `json:"enabled"`
+	UnitTime  Duration `json:"unit_time"`  // Analysis duration of a single record
+	RecordTTL Duration `json:"record_ttl"` // Record's time to live
+	PathMap   []struct {
+		UrlPrefix string `json:"url_prefix"`
+		DirPrefix string `json:"dir_prefix"`
+	} `json:"path_map"` // Path mapping from URL to filesystem for file size indexing
+	SizeInfoTTL Duration // Size info's time to live
+	Export      struct {
+		ExportCommonConfig
+		MaxRatio float64 `json:"max_ratio"` // Max send ratio allowed for a client. Any client with a living ratio record larger than this will be banned
+	}
 }
 
-type ExportConfig struct {
+type RequestFrequencyConfig struct {
+	Enabled   bool     `json:"enabled"`
+	UnitTime  Duration `json:"unit_time"`  // Analysis duration of a single record
+	RecordTTL Duration `json:"record_ttl"` // Record's time to live
+	Export    struct {
+		ExportCommonConfig
+		MaxRPS float64 `json:"max_rps"` // Max request per second allowed for a client. Any client with a living rps record larger than this will be banned
+	}
+}
+
+// Common configs for rule export
+type ExportCommonConfig struct {
 	PrefixLength struct {
-		IPv4 int `json:"ipv4"`
-		IPv6 int `json:"ipv6"`
+		IPv4 int `json:"ipv4"` // Affected range for IPv4
+		IPv6 int `json:"ipv6"` // Affected range for IPv6
 	} `json:"prefix_length"`
-	TTL Duration `json:"ttl"`
-}
-
-func (c ExportConfig) Hash() uint32 {
-	h := fnv.New32a()
-	binary.Write(h, binary.BigEndian, c.PrefixLength.IPv4)
-	binary.Write(h, binary.BigEndian, c.PrefixLength.IPv6)
-	binary.Write(h, binary.BigEndian, c.TTL)
-	return h.Sum32()
-}
-
-func hashCombine(h1, h2 uint32) uint32 {
-	return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2))
+	TTL Duration `json:"ttl"` // Exported rule's time to live
 }
