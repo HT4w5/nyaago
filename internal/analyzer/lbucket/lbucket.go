@@ -14,12 +14,12 @@ import (
 type LeakyBucket struct {
 	cfg         *config.LeakyBucketConfig
 	db          *badger.DB
-	kb          *dbkey.KeyBuilder
+	kb          dbkey.KeyBuilder
 	cachedRules []dto.Rule
 }
 
 func MakeLeakyBucket(cfg *config.LeakyBucketConfig, db *badger.DB) *LeakyBucket {
-	kb := (&dbkey.KeyBuilder{}).WithTag(dbkey.LeakyBucketTag)
+	kb := dbkey.KeyBuilder{}.WithPrefix(dbkey.LeakyBucket)
 	return &LeakyBucket{
 		cfg:         cfg,
 		db:          db,
@@ -51,10 +51,10 @@ func (lb *LeakyBucket) Process(request dto.Request) error {
 	}
 
 	// Add record to cache if condition satisfies
-	if rec.Bucket > int64(lb.cfg.Capacity) {
+	if rec.Bucket > int64(lb.cfg.Export.Capacity) {
 		// Calculate rate limit
-		severity := float64(rec.Bucket) / float64(lb.cfg.Capacity)
-		ratelimit := max(float64(lb.cfg.LeakRate)/severity/severity, float64(lb.cfg.MinRate))
+		severity := float64(rec.Bucket) / float64(lb.cfg.Export.Capacity)
+		ratelimit := max(float64(lb.cfg.LeakRate)/severity/severity, float64(lb.cfg.Export.MinRate))
 		// Get prefix
 		prefixLength := 32
 		if rec.Addr.Is4() {
