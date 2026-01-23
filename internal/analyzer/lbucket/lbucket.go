@@ -1,6 +1,7 @@
 package lbucket
 
 import (
+	"context"
 	"fmt"
 	"net/netip"
 
@@ -26,6 +27,10 @@ func MakeLeakyBucket(cfg *config.LeakyBucketConfig, db *badger.DB) *LeakyBucket 
 		kb:          kb,
 		cachedRules: make([]dto.Rule, 0),
 	}
+}
+
+func (lb *LeakyBucket) Start(ctx context.Context) error {
+	return nil
 }
 
 func (lb *LeakyBucket) Process(request dto.Request) error {
