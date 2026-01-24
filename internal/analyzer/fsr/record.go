@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/HT4w5/nyaago/internal/dbkey"
-	"github.com/docker/go-units"
 )
 
 const (
@@ -110,17 +109,6 @@ func (r historicRecord) DBKey() []byte {
 	res = append(res, addrBytes[:]...)
 	binary.BigEndian.AppendUint64(res, uint64(r.Time.Unix()))
 	return res
-}
-
-func (r historicRecord) blame() string {
-	return fmt.Sprintf(
-		"Fetched %s %.2f times during %s to %s (%s)",
-		r.Path,
-		r.Ratio,
-		r.Time.Add(-r.Duration).Format(time.RFC3339),
-		r.Time.Format(time.RFC3339),
-		units.HumanDuration(r.Duration),
-	)
 }
 
 type fileSizeRecord struct {

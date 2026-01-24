@@ -2,6 +2,7 @@ package fsr
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/netip"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/HT4w5/nyaago/internal/rulelist"
 	"github.com/HT4w5/nyaago/pkg/dto"
 	"github.com/dgraph-io/badger/v4"
+	"github.com/docker/go-units"
 )
 
 const (
@@ -20,14 +22,15 @@ const (
 )
 
 type FileSendRatio struct {
-	cfg    *config.FileSendRatioConfig
-	db     *badger.DB
-	kb     dbkey.KeyBuilder // Main key builder
-	ipKb   dbkey.KeyBuilder // for ip records
-	crKb   dbkey.KeyBuilder // for current records
-	hrKb   dbkey.KeyBuilder // for historic records
-	fsrKb  dbkey.KeyBuilder // for file size records
-	logger *slog.Logger
+	cfg           *config.FileSendRatioConfig
+	db            *badger.DB
+	kb            dbkey.KeyBuilder // Main key builder
+	ipKb          dbkey.KeyBuilder // for ip records
+	crKb          dbkey.KeyBuilder // for current records
+	hrKb          dbkey.KeyBuilder // for historic records
+	fsrKb         dbkey.KeyBuilder // for file size records
+	logger        *slog.Logger
+	blameTemplate string
 }
 
 func MakeFileSendRatio(cfg *config.FileSendRatioConfig, db *badger.DB) *FileSendRatio {
@@ -41,6 +44,10 @@ func MakeFileSendRatio(cfg *config.FileSendRatioConfig, db *badger.DB) *FileSend
 		hrKb:   kb.WithPrefix(historicRecords),
 		fsrKb:  kb.WithPrefix(fileSizeRecords),
 		logger: logging.GetLogger().With(logging.SlogKeyModule, slogModuleName).WithGroup(slogGroupName),
+		blameTemplate: fmt.Sprintf(
+			"Fetch ratio exceeded %f.",
+			cfg.Export.RatioThreshold,
+		),
 	}
 }
 
@@ -132,9 +139,17 @@ func (fsr *FileSendRatio) Report(tx *rulelist.Tx) error {
 		prefix := netip.PrefixFrom(v.Addr, prefixLength).Masked()
 
 		tx.PutRule(dto.Rule{
-			Prefix:    prefix,
-			Banned:    true,
-			Blame:     v.blame(),
+			Prefix: prefix,
+			Banned: true,
+			Blame: fmt.Sprintf(
+				"%s Fetched %s %.2f times during %s to %s (%s).",
+				fsr.blameTemplate,
+				v.Path,
+				v.Ratio,
+				v.Time.Add(-v.Duration).Format(time.RFC3339),
+				v.Time.Format(time.RFC3339),
+				units.HumanDuration(v.Duration),
+			),
 			ExpiresAt: expTime,
 		})
 	}
