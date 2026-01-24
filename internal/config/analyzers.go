@@ -35,12 +35,12 @@ type FileSendRatioConfig struct {
 }
 
 type RequestFrequencyConfig struct {
-	Enabled   bool     `json:"enabled"`
-	UnitTime  Duration `json:"unit_time"`  // Analysis duration of a single record
-	RecordTTL Duration `json:"record_ttl"` // Record's time to live
-	Export    struct {
+	Enabled      bool     `json:"enabled"`
+	UnitTime     Duration `json:"unit_time"`     // Analysis duration of a single record
+	RecordTTL    Duration `json:"record_ttl"`    // Record's time to live
+	RPSThreshold float64  `json:"rps_threshold"` // Max request per second allowed for a client. Any client with a living rps record larger than this will be banned
+	Export       struct {
 		ExportCommonConfig
-		RPSThreshold float64 `json:"rps_threshold"` // Max request per second allowed for a client. Any client with a living rps record larger than this will be banned
 	}
 }
 
