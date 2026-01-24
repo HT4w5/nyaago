@@ -3,6 +3,7 @@ package lbucket
 import (
 	"errors"
 	"net/netip"
+	"time"
 
 	"github.com/dgraph-io/badger/v4"
 )
@@ -17,7 +18,7 @@ func (lb *LeakyBucket) putRecord(rec record) error {
 		return err
 	}
 	return lb.db.Update(func(txn *badger.Txn) error {
-		entry := badger.NewEntry(lb.kb.WithObject(rec).Build(), recordBytes)
+		entry := badger.NewEntry(lb.kb.WithObject(rec).Build(), recordBytes).WithTTL(time.Duration(lb.cfg.BucketTTL))
 		return txn.SetEntry(entry)
 	})
 }

@@ -9,10 +9,11 @@ type AnaylzerConfig struct {
 
 // Config for leaky bucket analyzer
 type LeakyBucketConfig struct {
-	Enabled  bool     `json:"enabled"`
-	LeakRate ByteSize `json:"leak_rate"` // Rate of bucket leak per second for a single client
-	Capacity ByteSize `json:"capacity"`  // Capacity of bucket. Amount of data accumulated before a bucket leaks
-	Export   struct {
+	Enabled   bool     `json:"enabled"`
+	LeakRate  ByteSize `json:"leak_rate"`  // Rate of bucket leak per second for a single client
+	Capacity  ByteSize `json:"capacity"`   // Capacity of bucket. Amount of data accumulated before a bucket leaks
+	BucketTTL Duration `json:"bucket_ttl"` // Record's time to live
+	Export    struct {
 		ExportCommonConfig
 		MinRate ByteSize `json:"min_rate"` // Minimum rate limit applyed to a client (to avoid connection timeout)
 	}
@@ -39,7 +40,7 @@ type RequestFrequencyConfig struct {
 	RecordTTL Duration `json:"record_ttl"` // Record's time to live
 	Export    struct {
 		ExportCommonConfig
-		MaxRPS float64 `json:"max_rps"` // Max request per second allowed for a client. Any client with a living rps record larger than this will be banned
+		RPSThreshold float64 `json:"rps_threshold"` // Max request per second allowed for a client. Any client with a living rps record larger than this will be banned
 	}
 }
 
