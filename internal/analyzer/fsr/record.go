@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/HT4w5/nyaago/internal/dbkey"
+	"github.com/docker/go-units"
 )
 
 const (
@@ -20,6 +21,29 @@ const (
 
 type ipRecord struct {
 	Addr netip.Addr
+}
+
+func (r *ipRecord) Marshal() ([]byte, error) {
+	var buf bytes.Buffer
+	enc := gob.NewEncoder(&buf)
+	if err := enc.Encode(r); err != nil {
+		return nil, fmt.Errorf("failed to encode record: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+func (r *ipRecord) Unmarshal(data []byte) error {
+	buf := bytes.NewReader(data)
+	dec := gob.NewDecoder(buf)
+	if err := dec.Decode(r); err != nil {
+		return fmt.Errorf("failed to decode record: %w", err)
+	}
+	return nil
+}
+
+func (r ipRecord) DBKey() []byte {
+	addrBytes := r.Addr.As16()
+	return addrBytes[:]
 }
 
 type currentRecord struct {
@@ -55,11 +79,11 @@ func (r currentRecord) DBKey() []byte {
 }
 
 type historicRecord struct {
-	Addr  netip.Addr
-	Path  string
-	Sent  int64
-	Ratio float64
-	Time  time.Time
+	Addr     netip.Addr
+	Path     string
+	Ratio    float64
+	Time     time.Time
+	Duration time.Duration
 }
 
 func (r *historicRecord) Marshal() ([]byte, error) {
@@ -86,6 +110,17 @@ func (r historicRecord) DBKey() []byte {
 	res = append(res, addrBytes[:]...)
 	binary.BigEndian.AppendUint64(res, uint64(r.Time.Unix()))
 	return res
+}
+
+func (r historicRecord) blame() string {
+	return fmt.Sprintf(
+		"Fetched %s %.2f times during %s to %s (%s)",
+		r.Path,
+		r.Ratio,
+		r.Time.Add(-r.Duration).Format(time.RFC3339),
+		r.Time.Format(time.RFC3339),
+		units.HumanDuration(r.Duration),
+	)
 }
 
 type fileSizeRecord struct {
