@@ -8,7 +8,7 @@ import (
 
 type Tx struct {
 	tx *badger.Txn
-	kb *dbkey.KeyBuilder
+	kb dbkey.KeyBuilder
 }
 
 func (rl *RuleList) BeginTx() *Tx {

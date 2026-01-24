@@ -10,14 +10,14 @@ import (
 type RuleList struct {
 	cfg *config.Config
 	db  *badger.DB
-	kb  *dbkey.KeyBuilder
+	kb  dbkey.KeyBuilder
 }
 
 func MakeRuleList(cfg *config.Config, db *badger.DB) (*RuleList, error) {
 	l := &RuleList{
 		cfg: cfg,
 		db:  db,
-		kb:  (&dbkey.KeyBuilder{}).WithTag(dbkey.RuleListTag),
+		kb:  dbkey.KeyBuilder{}.WithPrefix(dbkey.RuleList),
 	}
 
 	return l, nil

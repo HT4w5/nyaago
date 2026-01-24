@@ -6,6 +6,7 @@ const (
 	LeakyBucket Prefix = iota
 	FileSendRatio
 	RequestFrequency
+	RuleList
 )
 
 // Must return fixed-length slice for each type
