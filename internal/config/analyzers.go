@@ -11,10 +11,10 @@ type AnaylzerConfig struct {
 type LeakyBucketConfig struct {
 	Enabled  bool     `json:"enabled"`
 	LeakRate ByteSize `json:"leak_rate"` // Rate of bucket leak per second for a single client
+	Capacity ByteSize `json:"capacity"`  // Capacity of bucket. Amount of data accumulated before a bucket leaks
 	Export   struct {
 		ExportCommonConfig
-		Capacity ByteSize `json:"capacity"` // Capacity of bucket. Amount of data accumulated before a bucket leaks
-		MinRate  ByteSize `json:"min_rate"` // Minimum rate limit applyed to a client (to avoid connection timeout)
+		MinRate ByteSize `json:"min_rate"` // Minimum rate limit applyed to a client (to avoid connection timeout)
 	}
 }
 
@@ -26,10 +26,10 @@ type FileSendRatioConfig struct {
 		UrlPrefix string `json:"url_prefix"`
 		DirPrefix string `json:"dir_prefix"`
 	} `json:"path_map"` // Path mapping from URL to filesystem for file size indexing
-	SizeInfoTTL Duration // Size info's time to live
+	SizeInfoTTL Duration `json:"size_info_ttl"` // Size info's time to live
 	Export      struct {
 		ExportCommonConfig
-		MaxRatio float64 `json:"max_ratio"` // Max send ratio allowed for a client. Any client with a living ratio record larger than this will be banned
+		RatioThreshold float64 `json:"ratio_threshold"` // Minimum send ratio for a client to be exported. Any client with a living ratio record larger than this will be banned
 	}
 }
 

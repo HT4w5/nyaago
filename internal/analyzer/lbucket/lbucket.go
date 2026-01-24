@@ -10,13 +10,15 @@ import (
 	"github.com/HT4w5/nyaago/internal/rulelist"
 	"github.com/HT4w5/nyaago/pkg/dto"
 	"github.com/dgraph-io/badger/v4"
+	"github.com/docker/go-units"
 )
 
 type LeakyBucket struct {
-	cfg         *config.LeakyBucketConfig
-	db          *badger.DB
-	kb          dbkey.KeyBuilder
-	cachedRules []dto.Rule
+	cfg           *config.LeakyBucketConfig
+	db            *badger.DB
+	kb            dbkey.KeyBuilder
+	cachedRules   map[netip.Addr]dto.Rule
+	blameTemplate string
 }
 
 func MakeLeakyBucket(cfg *config.LeakyBucketConfig, db *badger.DB) *LeakyBucket {
@@ -25,7 +27,12 @@ func MakeLeakyBucket(cfg *config.LeakyBucketConfig, db *badger.DB) *LeakyBucket 
 		cfg:         cfg,
 		db:          db,
 		kb:          kb,
-		cachedRules: make([]dto.Rule, 0),
+		cachedRules: make(map[netip.Addr]dto.Rule),
+		blameTemplate: fmt.Sprintf(
+			"Bucket overflow. Leak rate %s. Capacity %s.",
+			units.HumanSize(float64(cfg.LeakRate)),
+			units.HumanSize(float64(cfg.Capacity)),
+		),
 	}
 }
 
@@ -56,9 +63,9 @@ func (lb *LeakyBucket) Process(request dto.Request) error {
 	}
 
 	// Add record to cache if condition satisfies
-	if rec.Bucket > int64(lb.cfg.Export.Capacity) {
+	if rec.Bucket > int64(lb.cfg.Capacity) {
 		// Calculate rate limit
-		severity := float64(rec.Bucket) / float64(lb.cfg.Export.Capacity)
+		severity := float64(rec.Bucket) / float64(lb.cfg.Capacity)
 		ratelimit := max(float64(lb.cfg.LeakRate)/severity/severity, float64(lb.cfg.Export.MinRate))
 		// Get prefix
 		prefixLength := 32
@@ -69,11 +76,16 @@ func (lb *LeakyBucket) Process(request dto.Request) error {
 		}
 		prefix := netip.PrefixFrom(rec.Addr, prefixLength).Masked()
 
-		lb.cachedRules = append(lb.cachedRules, dto.Rule{
+		lb.cachedRules[rec.Addr] = dto.Rule{
 			Prefix:    prefix,
 			Banned:    false,
 			RateLimit: int64(ratelimit),
-		})
+			Blame: fmt.Sprintf(
+				"%s Actual volume %s.",
+				lb.blameTemplate,
+				units.BytesSize(float64(rec.Bucket)),
+			),
+		}
 	}
 
 	err = lb.putRecord(rec)
@@ -91,6 +103,6 @@ func (lb *LeakyBucket) Report(tx *rulelist.Tx) error {
 			return err
 		}
 	}
-	lb.cachedRules = make([]dto.Rule, 0)
+	clear(lb.cachedRules)
 	return nil
 }
