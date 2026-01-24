@@ -56,7 +56,7 @@ func (fsr *FileSendRatio) Start(ctx context.Context) error {
 	}
 
 	// Start timer
-	go fsr.compileTimer(ctx)
+	go fsr.compileTicker(ctx)
 	return nil
 }
 
@@ -142,19 +142,19 @@ func (fsr *FileSendRatio) Report(tx *rulelist.Tx) error {
 	return nil
 }
 
-func (fsr *FileSendRatio) compileTimer(ctx context.Context) {
-	fsr.logger.Info("starting compile timer")
-	timer := time.NewTicker(time.Duration(fsr.cfg.UnitTime))
+func (fsr *FileSendRatio) compileTicker(ctx context.Context) {
+	fsr.logger.Info("starting compile ticker")
+	ticker := time.NewTicker(time.Duration(fsr.cfg.UnitTime))
 Loop:
 	for {
 		select {
-		case <-timer.C:
+		case <-ticker.C:
 			fsr.compileHistoricRecords()
 		case <-ctx.Done():
 			break Loop
 		}
 	}
-	fsr.logger.Info("stopping compile timer")
+	fsr.logger.Info("stopping compile ticker")
 }
 
 // Summarize current records and create new historic records
