@@ -13,6 +13,10 @@ import (
 	"github.com/docker/go-units"
 )
 
+const (
+	analyzerName = "leaky_bucket"
+)
+
 type LeakyBucket struct {
 	cfg           *config.LeakyBucketConfig
 	db            *badger.DB
@@ -34,6 +38,10 @@ func MakeLeakyBucket(cfg *config.LeakyBucketConfig, db *badger.DB) *LeakyBucket 
 			units.HumanSize(float64(cfg.Capacity)),
 		),
 	}
+}
+
+func (lb *LeakyBucket) Name() string {
+	return analyzerName
 }
 
 func (lb *LeakyBucket) Start(ctx context.Context) error {

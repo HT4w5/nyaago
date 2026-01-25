@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	analyzerName   = "file_send_ratio"
 	slogModuleName = "fsr"
 	slogGroupName  = "fsr"
 )
@@ -49,6 +50,10 @@ func MakeFileSendRatio(cfg *config.FileSendRatioConfig, db *badger.DB) *FileSend
 			cfg.Export.RatioThreshold,
 		),
 	}
+}
+
+func (fsr *FileSendRatio) Name() string {
+	return analyzerName
 }
 
 func (fsr *FileSendRatio) Start(ctx context.Context) error {

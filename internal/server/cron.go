@@ -2,13 +2,14 @@ package server
 
 import (
 	"context"
+	"time"
 
 	"github.com/go-co-op/gocron/v2"
 )
 
 func (s *Server) setupCronJobs() {
 	s.cron.NewJob(
-		gocron.DurationJob(s.cfg.Egress.Interval.Duration),
+		gocron.DurationJob(time.Duration(s.cfg.Egress.Interval)),
 		gocron.NewTask(s.runEgressTask),
 	)
 }

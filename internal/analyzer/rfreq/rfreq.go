@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	analyzerName   = "request_frequency"
 	slogModuleName = "rfreq"
 	slogGroupName  = "rfreq"
 )
@@ -42,6 +43,10 @@ func MakeRequestFrequency(cfg *config.RequestFrequencyConfig, db *badger.DB) *Re
 			cfg.RPSThreshold,
 		),
 	}
+}
+
+func (rf *RequestFrequency) Name() string {
+	return analyzerName
 }
 
 func (rf *RequestFrequency) Start(ctx context.Context) error {

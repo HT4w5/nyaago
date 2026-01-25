@@ -8,6 +8,7 @@ import (
 )
 
 type Analyzer interface {
+	Name() string
 	Start(ctx context.Context) error   // Start analyzer internal goroutines
 	Process(request dto.Request) error // Called when processing request
 	Report(tx *rulelist.Tx) error      // Called when generating a ruleset
