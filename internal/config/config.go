@@ -15,6 +15,7 @@ type ConfigObject interface {
 type Config struct {
 	Log      LogConfig      `json:"log"`
 	DB       DBConfig       `json:"db"`
+	Anaylzer AnaylzerConfig `json:"analyzer"`
 	RuleList RuleListConfig `json:"ip_list"`
 	Ingress  IngressConfig  `json:"ingress"`
 	Egress   EgressConfig   `json:"egress"`
